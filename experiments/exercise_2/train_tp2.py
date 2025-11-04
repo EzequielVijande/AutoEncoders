@@ -93,8 +93,8 @@ def train_perceptron(df: DataFrame, perceptron: Perceptron, learning_rate: float
 if __name__ == "__main__":
     print("TP3 - EJERCICIO 2: PERCEPTRÓN SIMPLE")
     print("-" * 50)
-    max_epochs = 2000
-    lr = 2e-2
+    max_epochs = 1500
+    lr = 5e-1
     # Load dataset
     df = read_csv(DATASET_PATH)
     print(f"Dataset cargado desde '{DATASET_PATH}'")
@@ -110,95 +110,118 @@ if __name__ == "__main__":
     # Configuración de pesos inicial común para todos los modelos
     weight_config = WeightInitConfig(seed=42)
 
-    # Entrenar y evaluar funcionamiento con perceptron lineal
-    l_mdl = Perceptron(num_inputs=3, activation_type="LINEAR", weight_init_config=weight_config)
-    l1_linear, trained_mdl = train_perceptron(df, l_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42, y_min=y_min,
-                                              y_max=y_max)
-    print(f'Final L1 loss (LINEAR): {l1_linear[-1]:.3f}')
+    #With Perceptron
+    # # Entrenar y evaluar funcionamiento con perceptron lineal
+    # l_mdl = Perceptron(num_inputs=3, activation_type="LINEAR", weight_init_config=weight_config)
+    # l1_linear, trained_mdl = train_perceptron(df, l_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42, y_min=y_min,
+    #                                           y_max=y_max)
+    # print(f'Final L1 loss (LINEAR): {l1_linear[-1]:.3f}')
 
-    # Entrenar y evaluar funcionamiento con perceptron sigmoid
+    # # Entrenar y evaluar funcionamiento con perceptron sigmoid
+    # non_l_mdl = Perceptron(num_inputs=3, activation_type="SIGMOID", weight_init_config=weight_config)
+    # l1_sigmoid, trained_mdl = train_perceptron(df, non_l_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42,
+    #                                            y_min=y_min, y_max=y_max)
+    # print(f'Final L1 loss (SIGMOID): {l1_sigmoid[-1]:.3f}')
+
+    # # Entrenar y evaluar funcionamiento con perceptron Relu (rango -1, 1)
+    # bipolar_mdl = Perceptron(num_inputs=3, activation_type="RELU", weight_init_config=weight_config)
+    # l1_bipolar, trained_mdl = train_perceptron(df, bipolar_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42,
+    #                                            y_min=y_min, y_max=y_max)
+    # print(f'Final L1 loss (RELU): {l1_bipolar[-1]:.3f}')
+    ## Mean L1 error comparison
+    # plt.figure(figsize=(10, 8))
+    # plt.rcParams['axes.labelsize'] = 16  # x and y labels
+    # plt.rcParams['xtick.labelsize'] = 14  # x-axis ticks
+    # plt.rcParams['ytick.labelsize'] = 14  # y-axis ticks
+    # plt.rcParams['axes.titlesize'] = 20  # title
+    # plt.title("MAE vs epochs")
+    # plt.plot(range(1, max_epochs + 1), l1_linear, label='Linear activation', lw=4)
+    # plt.plot(range(1, max_epochs + 1), l1_sigmoid, label='Sigmoid activation', lw=4)
+    # plt.plot(range(1, max_epochs + 1), l1_bipolar, label='ReLU activation', lw=4)
+    # plt.ylabel('Mean(|y-ŷ|)')
+    # plt.yscale('log')
+    # plt.xlabel('Epoch')
+    # plt.grid(True)
+    # plt.legend(fontsize=16)
+    output_dir = Path(__file__).parent / "outputs"
+    output_dir.mkdir(exist_ok=True)
+    # plt.savefig(str(output_dir / "ex2.png"))
+    # plt.show()
+
+    #With layer and trainer
+    y_norm = normalize(df['y'].values, y_min, y_max, (0, 1))
+    X = df.drop(columns=['y']).values
+    topology = [3, 1]
+    mdl = NeuralNetwork(topology, activation_type='SIGMOID')
+    b_size = 14
+    opt_cfg = OptimizerConfig(type='SGD')
+    loss = mse
+    tr = Trainer(learning_rate=lr, epochs=max_epochs, optimizer_config=opt_cfg,
+                loss_func=loss, network=mdl)
+    tr_losses, _ = tr.train(X, y_norm, b_size)
+
     non_l_mdl = Perceptron(num_inputs=3, activation_type="SIGMOID", weight_init_config=weight_config)
     l1_sigmoid, trained_mdl = train_perceptron(df, non_l_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42,
                                                y_min=y_min, y_max=y_max)
-    print(f'Final L1 loss (SIGMOID): {l1_sigmoid[-1]:.3f}')
 
-    # Entrenar y evaluar funcionamiento con perceptron Relu (rango -1, 1)
-    bipolar_mdl = Perceptron(num_inputs=3, activation_type="RELU", weight_init_config=weight_config)
-    l1_bipolar, trained_mdl = train_perceptron(df, bipolar_mdl, learning_rate=lr, max_epochs=max_epochs, seed=42,
-                                               y_min=y_min, y_max=y_max)
-    print(f'Final L1 loss (RELU): {l1_bipolar[-1]:.3f}')
-
-    # Mean L1 error comparison
-    plt.figure(figsize=(10, 8))
-    plt.rcParams['axes.labelsize'] = 16  # x and y labels
-    plt.rcParams['xtick.labelsize'] = 14  # x-axis ticks
-    plt.rcParams['ytick.labelsize'] = 14  # y-axis ticks
-    plt.rcParams['axes.titlesize'] = 20  # title
-    plt.title("MAE vs epochs")
-    plt.plot(range(1, max_epochs + 1), l1_linear, label='Linear activation', lw=4)
-    plt.plot(range(1, max_epochs + 1), l1_sigmoid, label='Sigmoid activation', lw=4)
-    plt.plot(range(1, max_epochs + 1), l1_bipolar, label='ReLU activation', lw=4)
-    plt.ylabel('Mean(|y-ŷ|)')
-    plt.yscale('log')
-    plt.xlabel('Epoch')
-    plt.grid(True)
-    plt.legend(fontsize=16)
-    output_dir = Path(__file__).parent / "outputs"
-    output_dir.mkdir(exist_ok=True)
-    plt.savefig(str(output_dir / "ex2.png"))
+    plt.figure()
+    plt.plot(np.array(tr_losses)*(y_max-y_min), label='Sigmoid')
+    plt.plot(l1_sigmoid, label='Perceptron')
+    plt.legend()
     plt.show()
 
-    # Análisis del efecto de la tasa de aprendizaje
-    print(f"\n{'=' * 60}")
-    print(f"ANÁLISIS DE TASA DE APRENDIZAJE")
-    print(f"{'=' * 60}")
 
-    # Seleccionar el mejor modelo y diferentes learning rates
-    learning_rates = [1e0, 1e-1,1e-2, 1e-3, 1e-4]
-    lr_losses = {}
+    # # Análisis del efecto de la tasa de aprendizaje
+    # print(f"\n{'=' * 60}")
+    # print(f"ANÁLISIS DE TASA DE APRENDIZAJE")
+    # print(f"{'=' * 60}")
 
-    print(f"Entrenando modelo RELU con diferentes tasas de aprendizaje...")
-    for lr_test in learning_rates:
-        print(f"\n--- Learning Rate: {lr_test} ---")
-        relu_lr_mdl = Perceptron(num_inputs=3, activation_type="Sigmoid", weight_init_config=weight_config)
-        l1_lr, _ = train_perceptron(df, relu_lr_mdl, learning_rate=lr_test, max_epochs=max_epochs, seed=42, y_min=y_min,
-                                    y_max=y_max)
-        lr_losses[lr_test] = l1_lr
-        print(f'Final L1 loss (Sigmoid, lr={lr_test}): {l1_lr[-1]:.3f}')
+    # # Seleccionar el mejor modelo y diferentes learning rates
+    # learning_rates = [1e0, 1e-1,1e-2, 1e-3, 1e-4]
+    # lr_losses = {}
 
-    # Gráfico de comparación de learning rates
-    plt.figure(figsize=(10, 8))
-    plt.rcParams['axes.labelsize'] = 16  # x and y labels
-    plt.rcParams['xtick.labelsize'] = 14  # x-axis ticks
-    plt.rcParams['ytick.labelsize'] = 14  # y-axis ticks
-    plt.rcParams['axes.titlesize'] = 20  # title
-    plt.title("MAE vs epochs - Learning Rate Comparison (Sigmoid)")
+    # print(f"Entrenando modelo RELU con diferentes tasas de aprendizaje...")
+    # for lr_test in learning_rates:
+    #     print(f"\n--- Learning Rate: {lr_test} ---")
+    #     relu_lr_mdl = Perceptron(num_inputs=3, activation_type="Sigmoid", weight_init_config=weight_config)
+    #     l1_lr, _ = train_perceptron(df, relu_lr_mdl, learning_rate=lr_test, max_epochs=max_epochs, seed=42, y_min=y_min,
+    #                                 y_max=y_max)
+    #     lr_losses[lr_test] = l1_lr
+    #     print(f'Final L1 loss (Sigmoid, lr={lr_test}): {l1_lr[-1]:.3f}')
 
-    colors = ['red', 'blue', 'green', 'orange', 'black']
-    for i, lr_test in enumerate(learning_rates):
-        plt.plot(range(1, max_epochs + 1), lr_losses[lr_test],
-                 label=f'LR = {lr_test}', lw=4, color=colors[i])
+    # # Gráfico de comparación de learning rates
+    # plt.figure(figsize=(10, 8))
+    # plt.rcParams['axes.labelsize'] = 16  # x and y labels
+    # plt.rcParams['xtick.labelsize'] = 14  # x-axis ticks
+    # plt.rcParams['ytick.labelsize'] = 14  # y-axis ticks
+    # plt.rcParams['axes.titlesize'] = 20  # title
+    # plt.title("MAE vs epochs - Learning Rate Comparison (Sigmoid)")
 
-    plt.ylabel('Mean(|y-ŷ|)')
-    plt.xlabel('Epoch')
-    plt.yscale('log')
-    plt.grid(True)
-    plt.legend(fontsize=16)
-    plt.savefig(str(output_dir / "ex2_learning_rates.png"))
-    plt.show()
+    # colors = ['red', 'blue', 'green', 'orange', 'black']
+    # for i, lr_test in enumerate(learning_rates):
+    #     plt.plot(range(1, max_epochs + 1), lr_losses[lr_test],
+    #              label=f'LR = {lr_test}', lw=4, color=colors[i])
 
-    # Analisis del poder de generalizacion del peceptron con función de activación ReLU
-    print(f"\n{'=' * 60}")
-    print(f"ANÁLISIS DE GENERALIZACIÓN (K-FOLD)")
-    print(f"{'=' * 60}")
+    # plt.ylabel('Mean(|y-ŷ|)')
+    # plt.xlabel('Epoch')
+    # plt.yscale('log')
+    # plt.grid(True)
+    # plt.legend(fontsize=16)
+    # plt.savefig(str(output_dir / "ex2_learning_rates.png"))
+    # plt.show()
 
-    # Usar datos normalizados para consistencia con el experimento principal
+    # # Analisis del poder de generalizacion del peceptron con función de activación ReLU
+    # print(f"\n{'=' * 60}")
+    # print(f"ANÁLISIS DE GENERALIZACIÓN (K-FOLD)")
+    # print(f"{'=' * 60}")
+
+    # # Usar datos normalizados para consistencia con el experimento principal
     y_norm = normalize(df['y'].values, y_min, y_max, (0, 1))
     X = df.drop(columns=['y']).values
 
     topology = [3, 1]
     mdl = NeuralNetwork(topology, activation_type='SIGMOID')
-    b_size = 1
+    b_size = 14
     opt_cfg = OptimizerConfig(type='SGD')
     loss = mse
     k = 5

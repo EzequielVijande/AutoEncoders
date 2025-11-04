@@ -45,10 +45,15 @@ class Trainer:
                     print("Advertencia: y contiene valores NaN o Inf en la época", epoch)
                     continue
 
+                # print(f'Y shape = {y.shape}')
+                # print(f'Batch labels shape = {batch_labels.shape}')
+                batch_labels = batch_labels.reshape(y.shape)  # Ensure same shape
                 batch_loss, loss_grad = self.loss_f(y, batch_labels)
                 total_loss += batch_loss
 
                 # FIX 1: Ensure batch_loss has correct shape for backpropagation
+                # print(f'Loss grad shape ={loss_grad.shape}')
+                # print(f'Derivative shape = {self.network.layers[-1].get_activation_derivative().shape}')
                 delta_output = loss_grad*self.network.layers[-1].get_activation_derivative()
                 
                 deltas = [delta_output]  # Start with output layer delta
@@ -73,6 +78,9 @@ class Trainer:
                         delta_next = delta_next.reshape(1, -1)  # Ensure 2D
                     
                     # Correct backpropagation: δ_l = (δ_{l+1} · W_{l+1}^T) ⊙ f'(z_l)
+                    # print(f'Next delta shape = {delta_next.shape}')
+                    # print(f'Current layer activation grad = {current_layer.get_activation_derivative().shape}')
+                    # print(f'Weights next layer= {weights_next_layer.shape}')
                     delta_current = np.dot(delta_next, weights_next_layer.T) * current_layer.get_activation_derivative()
                     
                     deltas.insert(0, delta_current)
@@ -97,16 +105,19 @@ class Trainer:
                     if delta.ndim == 1:
                         delta = delta.reshape(-1, 1)  # Ensure 2D
                     
+                    # print(f'Inputs with bias shape = {inputs_with_bias.shape}')
+                    # print(f'delta shape = {delta.shape}')
+                    # print(f'Batch size = {batch_inputs.shape[0]}')
                     # Gradient for all weights (including bias)
                     gradients = np.dot(inputs_with_bias.T, delta) / batch_inputs.shape[0]
+
+                    # print(f'Gradients shape = {gradients.shape}')
                     
                     # Split gradients for each perceptron
                     layer_gradients = [gradients[:, i] for i in range(gradients.shape[1])]
                     all_gradients.append(layer_gradients)
                 self.optimizer.update_network(self.network, all_gradients, self.learning_rate)
                     
-            if verbose and (epoch % 10 == 0 or epoch == 1):
-                print(f"Época {epoch}/{self.epochs} - Pérdida: {total_loss}")
 
             avg_train_loss = total_loss/ (num_samples // batch_size)
             train_losses.append(avg_train_loss)

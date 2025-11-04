@@ -49,11 +49,11 @@ def main():
     X_test, y_test = preprocess_data(X_test, y_test_labels)
 
     # Paso 2: Crear e inicializar la red neuronal
-    topology = [784, 128, 64, 10]
+    topology = [784, 128, 64, 32, 10]
     activation_type = "RELU"
-    learning_rate = 0.001
-    epochs = 50
-    batch_size = 32
+    learning_rate = 1E-2
+    epochs = 100
+    batch_size = 64
     dropout_rate = 0.0
 
     print("Inicializando la red neuronal...")
@@ -64,14 +64,14 @@ def main():
     )
 
     tr = Trainer( learning_rate, epochs, nn,
-        softmax_cross_entropy_with_logits, optimizer_config=OptimizerConfig("SGD") )
+        softmax_cross_entropy_with_logits, optimizer_config=OptimizerConfig("ADAM") )
 
     # Paso 3a Entrenar la red
     print("Entrenando la red neuronal...")
-    tr.train(X_train, y_train, batch_size)
+    # tr.train(X_train, y_train, batch_size)
 
     # Crear conjunto de validación (10% de los datos)
-    val_split = 0.1
+    val_split = 0.001
     split_idx = int((1 - val_split) * len(X_train))
     x_train_main, x = X_train[:split_idx], X_train[split_idx:]
     y_train_main, y = y_train[:split_idx], y_train[split_idx:]
@@ -86,6 +86,9 @@ def main():
         patience=10
     )
 
+    plots_dir = Path("outputs/plots")
+    plots_dir.mkdir(parents=True, exist_ok=True)
+
     #Paso 3b: graph loss and validation
     plt.figure(figsize=(8, 5))
     plt.plot(train_losses, label='Training Loss')
@@ -95,10 +98,10 @@ def main():
     plt.title('Early Stopping - Training vs Validation Loss')
     plt.legend()
     plt.grid(True)
+    plt.savefig(plots_dir / "mnist_early_stopping_loss.png", dpi=300, bbox_inches="tight")
     plt.show()
     plots_dir = Path("outputs/plots")
     plots_dir.mkdir(parents=True, exist_ok=True)
-    plt.savefig(plots_dir / "mnist_early_stopping_loss.png", dpi=300, bbox_inches="tight")
 
     # Paso 4: Evaluar la red en el conjunto de prueba
     print("Evaluando la red en el conjunto de prueba...")
@@ -192,11 +195,11 @@ def main():
         start_time = time.perf_counter()
 
         train_losses, val_losses = tr_opt.train(
-            X_train_main, y_train_main,
+            x_train_main, y_train_main,
             batch_size=batch_size,
             verbose=False,
-            x=X_val,
-            y=y_val,
+            x_val=x,
+            y_val=y,
             patience=10
         )
 
@@ -205,7 +208,7 @@ def main():
 
         acc = nn_opt.evaluate(X_test, y_test) * 100
         print(f"{opt['name']} → Precisión: {acc:.2f}%")
-        results.append({"optimizer": opt["name"], "val_loss": val_losses[-1] if val_losses else None, "test_acc": acc})
+        results.append({"optimizer": opt["name"], "val_loss": val_losses[-1] if val_losses else None, "test_acc": acc, "time_sec": elapsed})
 
         # Comparison plot
         plt.figure(figsize=(7, 5))
