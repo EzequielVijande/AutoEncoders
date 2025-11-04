@@ -1,26 +1,26 @@
 # Neural Network Base
 
-Una implementación base de una red neuronal multicapa (MLP) en Python desde cero, diseñada para ser fácilmente extensible para diversos proyectos de reconocimiento y clasificación.
+Implementaciones de Auto-encoders y Variational Auto-encoders (VAE) en Python basada en implementación propia de redes neuronales, diseñada para ser fácilmente extensible para diversos proyectos de reconocimiento y clasificación.
 
 ## Características
 
-- Arquitectura modular con clases para Perceptron, Layer y NeuralNetwork.
+- Arquitectura modular con clases para Layer y NeuralNetwork.
 - Soporte para múltiples funciones de activación: ReLU, Sigmoid, Softmax.
-- Implementación de la función de pérdida de entropía cruzada.
-- Entrenamiento por lotes con Descenso de Gradiente Estocástico (SGD).
+- Implementación de la función de pérdida de entropía cruzada, MSE y MAE.
+- Entrenamiento por lotes con Descenso de Gradiente Estocástico (SGD), SGD + momento y Adam.
 - Funcionalidad para guardar y cargar pesos de la red.
-- Ejemplos de uso con el conjunto de datos MNIST y operaciones lógicas básicas.
+- Ejemplos de uso.
 - Pruebas unitarias para asegurar la integridad del código.
 
 ## Instalación
 
 1. Clona el repositorio:
     ```bash
-    git clone https://github.com/FelipeCupito/neural-network-base.git
+    git clone https://github.com/EzequielVijande/AutoEncoders.git
     ```
 2. Navega al directorio del proyecto:
     ```bash
-    cd neural-network-base
+    cd AutoEncoders
     ```
 3. (Opcional) Crea un entorno virtual:
     ```bash
@@ -34,9 +34,3 @@ Una implementación base de una red neuronal multicapa (MLP) en Python desde cer
 
 ## Uso
 
-### Entrenar con MNIST
-
-Ejecuta el script de ejemplo para entrenar la red neuronal con el conjunto de datos MNIST:
-
-```bash
-python examples/mnist_example.py

@@ -6,7 +6,7 @@ from typing import Tuple
 # -------------------------------
 # Función de Pérdida: Softmax con Entropía Cruzada
 # -------------------------------
-def softmax_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> (float, np.ndarray):
+def softmax_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) -> Tuple[float, np.ndarray]:
     logits_stable = logits - np.max(logits, axis=1, keepdims=True)
     exp_logits = np.exp(logits_stable)
     softmax_probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)

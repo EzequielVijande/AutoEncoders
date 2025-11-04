@@ -1,7 +1,60 @@
 import numpy as np
 from typing import List, Tuple, Dict, Any, Union
+import re
 
+def parse_font_file(filename):
+    """
+    Parse the C-style font array into a Python dictionary.
+    
+    Args:
+        filename: Path to the font.h file
+        
+    Returns:
+        Dictionary with character strings as keys and flattened binary arrays as values
+    """
+    
+    with open(filename, 'r') as f:
+        content = f.read()
+    # Extract the array data using regex
+    pattern = r'\{([^}]+)\}'
+    matches = re.findall(pattern, content)
+    comment_match = re.findall(r'//\s*(.*)', content)
+    char_codes = [comment.split()[-1] for comment in comment_match if '0x' in comment]
+    assert len(matches) == len(char_codes), "Mismatch between number of characters and data blocks"
 
+    font_dict = {}
+    for i, match in enumerate(matches):
+        rows = match.split()
+        binary_mat = np.zeros((7,5), dtype=np.int8)
+        for j, row in enumerate(rows):
+            if '0x' in row:
+                hex_string = re.sub(r'[^a-zA-Z0-9]', '', row.split('0x')[1])
+                int_val = int(hex_string, 16)
+                # Convert hex to integer
+                # Convert to 5-bit binary (since it's 5x7 font)
+                binary_mat[j] = [(int_val >> bit) & 1 for bit in range(4, -1, -1)]
+            else:
+                raise ValueError('No hex values found')
+        font_dict[char_codes[i]] = binary_mat.flatten()
+    
+    return font_dict
+
+def visualize_font(font_dict, char):
+    """
+    Visualize a font character to verify correct parsing.
+    """
+    if char not in font_dict:
+        print(f"Character '{char}' not found in font dictionary")
+        return
+    
+    binary_data = font_dict[char]
+    matrix = binary_data.reshape(7, 5)  # Reshape to 7x5
+    
+    print(f"Character: '{char}'")
+    for row in matrix:
+        row_str = ''.join(['█' if pixel else ' ' for pixel in row])
+        print(f"|{row_str}|")
+    print()
 
 def shuffle_data(inputs: np.ndarray, labels: np.ndarray) -> (np.ndarray, np.ndarray):
     """
