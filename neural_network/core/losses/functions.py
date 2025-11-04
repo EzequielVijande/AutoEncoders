@@ -1,6 +1,7 @@
 # loss_functions.py
 
 import numpy as np
+from typing import Tuple
 
 # -------------------------------
 # Función de Pérdida: Softmax con Entropía Cruzada
@@ -15,15 +16,11 @@ def softmax_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) ->
     loss = -np.sum(labels * np.log(softmax_probs)) / logits.shape[0]
     return loss, softmax_probs-labels
 
-def cross_entropy_loss(predictions: np.ndarray, targets: np.ndarray) -> (float, float):
-    "Cross entropy loss for one-hot encoded targets"
-    return -np.sum(targets * np.log(predictions + 1e-8)), 
 
-
-def mae(x1, x2) -> (float, np.ndarray):
+def mae(x1, x2) -> Tuple[float, np.ndarray]:
     "Mean absolute err"
     return np.mean(np.abs(x1-x2)), np.sign(x1-x2)/x1.shape[0]
 
-def mse(pred, label) -> (float, np.ndarray):
+def mse(pred, label) -> Tuple[float, np.ndarray]:
     "Mean absolute err"
     return np.mean((pred-label)**2), pred-label
