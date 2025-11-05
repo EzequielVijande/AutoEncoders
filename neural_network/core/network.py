@@ -2,7 +2,7 @@
 
 import numpy as np
 import os
-from typing import List
+from typing import List, Union
 from .layer import Layer
 
 
@@ -10,23 +10,30 @@ class NeuralNetwork:
     def __init__(
             self,
             topology: List[int],
-            activation_type: str = "SIGMOID",
+            activation_type: Union[List[str], str] = "SIGMOID",
             dropout_rate: float = 0.0
     ) -> None:
         if len(topology) < 2:
             raise ValueError("La topología debe tener al menos dos capas (entrada y salida).")
+        if isinstance(activation_type, list):
+            if len(activation_type) != len(topology) - 1:
+                raise ValueError("La lista de tipos de activación debe coincidir con el número de capas ocultas y de salida.")
 
         self.layers: List[Layer] = []
-        self.activation_type = activation_type
+        self.activation_type: Union[List[str], str] = activation_type
         self.dropout_rate: float = dropout_rate
 
         for i in range(1, len(topology)):
             # No aplicar dropout en la capa de salida
             layer_dropout_rate = dropout_rate if i < len(topology) - 1 else 0.0
+            if isinstance(activation_type, list):
+                layer_act = activation_type[i - 1].upper()
+            else:
+                layer_act = activation_type.upper()
             layer = Layer(
                 num_perceptrons=topology[i],
                 num_inputs_per_perceptron=topology[i - 1],
-                activation_type=activation_type,
+                activation_type=layer_act,
                 dropout_rate=layer_dropout_rate
             )
             self.layers.append(layer)

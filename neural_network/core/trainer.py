@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Optional, Union, Any, Dict
+from typing import List, Optional, Union, Any, Dict, Tuple
 from .network import NeuralNetwork
 from .optimizers import OptimizerFunction, OptimizerFunctionFactory
 from ..config import OptimizerConfig
@@ -17,7 +17,7 @@ class Trainer:
         self.optimizer: OptimizerFunction = self._create_optimizer(optimizer_config)
 
     def train(self, training_inputs: np.ndarray, training_labels: np.ndarray, batch_size: int = 32, verbose=False,
-              x_val = None, y_val = None, patience = 10) -> None:
+              x_val = None, y_val = None, patience = 10) -> Tuple[List[float], List[float]]:
         if training_inputs.shape[0] != training_labels.shape[0]:
             raise ValueError("El número de muestras en 'training_inputs' y 'training_labels' debe ser el mismo.")
 
