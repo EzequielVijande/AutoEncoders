@@ -7,7 +7,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from neural_network.utils.data_utils import parse_font_file
 from neural_network.core.network import NeuralNetwork
 from neural_network.core.trainer import Trainer
-from neural_network.core.losses.functions import mse
+from neural_network.core.losses.functions import mse, mae
 from neural_network.config import OptimizerConfig
 
 DATASET_PATH = "resources/datasets/font.h"
@@ -21,32 +21,34 @@ def main():
         X[i] = dst[key]
     #Inicializar modelo AE
     topology = [35, 26, 10, 26, 35]
-    activations = ['relu', 'relu', 'relu', 'sigmoid']
+    activations = ['relu']*(len(topology)-2) + ['sigmoid']
     nn = NeuralNetwork(topology, activations)
     #Parametros de entrenamiento
-    b_size = 32
+    b_size = 32 #Conjunto completo como batch
     lr = 1e-3
-    epochs = 10000
+    epochs = 5000
     opt_cfg = OptimizerConfig("ADAM")
     tr = Trainer(lr, epochs, nn, mse, opt_cfg)
     #Entrenar modelo
     tr_losses, _ = tr.train(X, X, b_size)
     #Graficar perdida
     plt.figure()
-    plt.plot(tr_losses, label="Pérdida de Entrenamiento")
+    plt.plot(tr_losses, label="Pérdida de Entrenamiento", lw=3)
     plt.xlabel("Épocas")
     plt.ylabel("Pérdida")
+    plt.grid(True)
     plt.title("Pérdida durante el Entrenamiento del Autoencoder")
+    plt.savefig("./outputs/plots/font_autoencoder_training_loss.png")
     plt.show()
 
-    pred = tr.network.forward(X[2].reshape((1,-1)), training=False)
-    plt.figure()
-    plt.title('Original')
-    plt.imshow(X[2].reshape((7,5)), cmap='gray_r')
-    plt.show()
-    plt.figure()
-    plt.title('Reconstruido')
-    plt.imshow(pred.reshape((7,5)), cmap='gray_r')
+    #Graficar todas las reconstrucciones
+    preds = np.round(tr.network.forward(X, training=False)).astype(np.int32)
+    pixel_errors = np.abs(X - preds).sum(axis=1)
+    plt.figure(figsize=(10, 6))
+    plt.bar(list(dst.keys()),pixel_errors)
+    plt.ylabel("Pixels incorrectos")
+    plt.grid(True)
+    plt.savefig("./outputs/plots/font_autoencoder_pixel_errors.png")
     plt.show()
 
 
