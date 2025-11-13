@@ -8,7 +8,7 @@ from neural_network.utils.data_utils import parse_font_file
 from neural_network.core.network import NeuralNetwork
 from neural_network.core.auto_encoder import AutoEncoder
 from neural_network.core.trainer import Trainer
-from neural_network.core.losses.functions import mse, mae
+from neural_network.core.losses.functions import mse
 from neural_network.config import OptimizerConfig
 
 DATASET_PATH = "resources/datasets/font.h"
@@ -21,18 +21,26 @@ def main():
     for i, key in enumerate(dst):
         X[i] = dst[key]
     #Inicializar modelo AE
-    topology = [35, 26, 16, 8, 2]
-    enc_act = ['relu']*len(topology[1:])
-    dec_act = ['relu'] *len(topology[2:]) + ['sigmoid']
-    ae = AutoEncoder(topology, enc_act, dec_act)
+    topology = [35, 26, 10, 26, 35]
+    activations = ['relu']*(len(topology)-2) + ['sigmoid']
+    nn = NeuralNetwork(topology, activations)
+    ae = AutoEncoder(topology[:3], activations[:2], activations[2:])
+    print(f'Encoder topology: {ae.encoder.get_topology()}')
+    print(f'Decoder topology: {ae.decoder.get_topology()}')
+    print((f'AE topology ={ae.get_topology()}'))
+    print(f'Number of layers in encoder = {len(ae.encoder.layers)}')
+    print(f'Number of layers in decoder = {len(ae.decoder.layers)}')
+    print(f'Number of layers in AE = {len(ae.layers)}')
     #Parametros de entrenamiento
     b_size = 32 #Conjunto completo como batch
-    lr = 1e-3
+    lr = 2e-2
     epochs = 10000
-    opt_cfg = OptimizerConfig("ADAM")
+    opt_cfg = OptimizerConfig("SGD")
     tr = Trainer(lr, epochs, ae, mse, opt_cfg)
+    tr2 = Trainer(lr, epochs, nn, mse, opt_cfg)
     #Entrenar modelo
     tr_losses, _ = tr.train(X, X, b_size)
+    tr_losses2, _ = tr2.train(X, X, b_size)
     #Verificar diferencias entre codificado-decodificado y forward
     encoded = ae.decode(ae.encode(X, training=False), training=False)
     encoded2 = ae.forward(X, training=False)
@@ -40,6 +48,7 @@ def main():
     #Graficar perdida
     plt.figure()
     plt.plot(tr_losses, label="AE", lw=3)
+    plt.plot(tr_losses2, label="NN", lw=3)
     plt.legend()
     plt.xlabel("Épocas")
     plt.ylabel("Pérdida")
