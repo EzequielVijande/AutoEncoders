@@ -25,9 +25,9 @@ def main():
     nn = NeuralNetwork(topology, activations)
     #Parametros de entrenamiento
     b_size = 32 #Conjunto completo como batch
-    lr = 1e-3
-    epochs = 5000
-    opt_cfg = OptimizerConfig("ADAM")
+    lr = 2e-2
+    epochs = 10000
+    opt_cfg = OptimizerConfig("SGD")
     tr = Trainer(lr, epochs, nn, mse, opt_cfg)
     #Entrenar modelo
     tr_losses, _ = tr.train(X, X, b_size)

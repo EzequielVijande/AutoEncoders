@@ -7,7 +7,7 @@ class Layer:
                  activation_type: str = "SIGMOID",
                  dropout_rate: float = 0.0) -> None:
         # Weight matrix: (num_inputs + 1, num_perceptrons), last row is bias
-        self.weights = np.random.randn(num_inputs_per_perceptron + 1, num_perceptrons) * 0.1
+        self.weights = np.random.randn(num_inputs_per_perceptron + 1, num_perceptrons) * np.sqrt(2/(num_inputs_per_perceptron + 1 +num_perceptrons))
         self.activation_type = activation_type
         self.activation: ActivationFunction = ActivationFunctionFactory.create(activation_type)
         self.outputs: np.ndarray = np.array([])
