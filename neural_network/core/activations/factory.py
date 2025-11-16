@@ -8,6 +8,7 @@ from .step_bipolar import StepBipolarActivation
 from .sigmoid import SigmoidActivation
 from .relu import ReLUActivation
 from .linear import LinearActivation
+from .tanh import TanhActivation
 
 
 class ActivationFunctionType(Enum):
@@ -16,6 +17,7 @@ class ActivationFunctionType(Enum):
     STEP_BIPOLAR = auto()
     SIGMOID = auto()
     RELU = auto()
+    TANH = auto()
     LINEAR = auto()
 
 
@@ -26,6 +28,7 @@ class ActivationFunctionFactory:
         ActivationFunctionType.STEP_BIPOLAR: StepBipolarActivation,
         ActivationFunctionType.SIGMOID: SigmoidActivation,
         ActivationFunctionType.RELU: ReLUActivation,
+        ActivationFunctionType.TANH: TanhActivation,
         ActivationFunctionType.LINEAR: LinearActivation,
     }
     
@@ -35,6 +38,7 @@ class ActivationFunctionFactory:
         "STEP_BIPOLAR": ActivationFunctionType.STEP_BIPOLAR,
         "SIGMOID": ActivationFunctionType.SIGMOID,
         "RELU": ActivationFunctionType.RELU,
+        "TANH": ActivationFunctionType.TANH,
         "LINEAR": ActivationFunctionType.LINEAR,
     }
 
