@@ -18,7 +18,7 @@ def visualize_character(data, title="Character", ax=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=(2, 3))
     img = data.reshape(7, 5)
-    ax.imshow(img, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
+    ax.imshow(img, cmap='binary', interpolation='nearest', vmin=0, vmax=1)
     ax.set_title(title)
     ax.axis('off')
     return ax
@@ -95,7 +95,7 @@ def main():
     ae = AutoEncoder(topology, enc_act, dec_act)
     #Parametros de entrenamiento
     b_size = 32 #Conjunto completo como batch
-    lr = 1e-2
+    lr = 1e-3
     epochs = 10000
     opt_cfg = OptimizerConfig("ADAM")
     tr = Trainer(lr, epochs, ae, mse, opt_cfg)
