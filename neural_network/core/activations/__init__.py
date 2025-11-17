@@ -13,6 +13,7 @@ from .step import StepActivation
 from .step_bipolar import StepBipolarActivation
 from .sigmoid import SigmoidActivation
 from .relu import ReLUActivation
+from .tanh import TanhActivation
 
 # Factory for creating activation functions
 from .factory import ActivationFunctionFactory, ActivationFunctionType
