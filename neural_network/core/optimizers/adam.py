@@ -26,46 +26,42 @@ class AdamOptimizer(OptimizerFunction):
         self.v = {}  # Second moment vector
         self.timestep = {}
 
-    def update_network(self, network: NeuralNetwork, gradients, learning_rate: float):
+    def update_network(self, network: NeuralNetwork, learning_rate: float):
         """
         Update all weights in the network using Adam.
         `gradients` should be a list of lists: gradients[layer][perceptron]
         """
         for layer_idx, layer in enumerate(network.layers):
-            key = id(layer)
-            grad = np.array(gradients[layer_idx]).transpose()  # Shape: (num_inputs + 1, num_perceptrons)
-            weights = layer.weights
+            if hasattr(layer, 'layers'):  # If the layer is a composite layer (like StochasticLayer)
+                for l in layer.layers:
+                    key = id(l)
+                    if key not in self.m:
+                        self.m[key] = np.zeros_like(l.weights, dtype=np.float32)
+                        self.v[key] = np.zeros_like(l.weights, dtype=np.float32)
+                        self.timestep[key] = 0
 
-            if key not in self.m:
-                self.m[key] = np.zeros_like(weights, dtype=np.float32)
-                self.v[key] = np.zeros_like(weights, dtype=np.float32)
-                self.timestep[key] = 0
+                    self.timestep[key] += 1
+                    self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * l.grad
+                    self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (l.grad ** 2)
+                    m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
+                    v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
+                    l.weights = l.weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+                continue
+            else:
+                key = id(layer)
 
-            self.timestep[key] += 1
-            self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grad
-            self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grad ** 2)
-            m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
-            v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
-            network.layers[layer_idx].weights = weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
-    
-    
-        # for layer_idx, layer in enumerate(network.layers):
-        #     for p_idx, perceptron in enumerate(layer.perceptrons):
-        #         key = id(perceptron)
-        #         grad = gradients[layer_idx][p_idx]
-        #         weights = perceptron.weights
+                if key not in self.m:
+                    self.m[key] = np.zeros_like(layer.weights, dtype=np.float32)
+                    self.v[key] = np.zeros_like(layer.weights, dtype=np.float32)
+                    self.timestep[key] = 0
 
-        #         if key not in self.m:
-        #             self.m[key] = np.zeros_like(weights, dtype=np.float32)
-        #             self.v[key] = np.zeros_like(weights, dtype=np.float32)
-        #             self.timestep[key] = 0
+                self.timestep[key] += 1
+                self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * layer.grad
+                self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (layer.grad ** 2)
+                m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
+                v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
+                layer.weights = layer.weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
-        #         self.timestep[key] += 1
-        #         self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grad
-        #         self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grad ** 2)
-        #         m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
-        #         v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
-        #         perceptron.weights = weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
     
     
     def reset_state(self) -> None:

@@ -2,7 +2,7 @@
 
 import numpy as np
 import os
-from typing import List, Union
+from typing import List, Union, Tuple
 from .layer import Layer
 
 
@@ -45,6 +45,8 @@ class NeuralNetwork:
         return topology
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
+        if inputs.ndim == 1:
+            inputs = inputs.reshape(1, -1)
         if inputs.shape[1] != (self.layers[0].weights.shape[0]-1): #Se tiene en cuenta el bias
             raise ValueError("El número de características en las entradas no coincide con el esperado por la red.")
         for layer in self.layers:

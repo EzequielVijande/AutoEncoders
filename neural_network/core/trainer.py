@@ -53,70 +53,14 @@ class Trainer:
 
                 # FIX 1: Ensure batch_loss has correct shape for backpropagation
                 # print(f'Loss grad shape ={loss_grad.shape}')
-                # print(f'Derivative shape = {self.network.layers[-1].get_activation_derivative().shape}')
-                delta_output = loss_grad*self.network.layers[-1].get_activation_derivative()
-                
-                deltas = [delta_output]  # Start with output layer delta
+                delta  = loss_grad
 
                 # Backpropagation through layers
-                for l in range(len(self.network.layers) - 2, -1, -1):
+                for l in range(len(self.network.layers) - 1, -1, -1):
                     current_layer = self.network.layers[l]
-                    next_layer = self.network.layers[l + 1]
-                    
-                    # FIX 2: Handle weights extraction properly
-                    # Assuming each layer has .weights attribute of shape (input_dim+1, num_neurons)
-                    # where last row is bias weights
-                    weights_next_layer = next_layer.weights[:-1, :]  # Exclude bias, shape: (next_layer_input_dim, num_neurons_next)
-                    
-                    delta_next = deltas[0]  # Current delta from next layer
-                    
-                    # FIX 3: Proper matrix multiplication for backpropagation
-                    # delta_next shape: (batch_size, num_neurons_next)
-                    # weights_next_layer shape: (next_layer_input_dim, num_neurons_next)
-                    # We want: delta_next dot weights_next_layer.T
-                    if delta_next.ndim == 1:
-                        delta_next = delta_next.reshape(1, -1)  # Ensure 2D
-                    
-                    # Correct backpropagation: δ_l = (δ_{l+1} · W_{l+1}^T) ⊙ f'(z_l)
-                    # print(f'Next delta shape = {delta_next.shape}')
-                    # print(f'Current layer activation grad = {current_layer.get_activation_derivative().shape}')
-                    # print(f'Weights next layer= {weights_next_layer.shape}')
-                    delta_current = np.dot(delta_next, weights_next_layer.T) * current_layer.get_activation_derivative()
-                    
-                    deltas.insert(0, delta_current)
+                    delta = current_layer.backward(delta)
 
-                # FIX 4: Calculate gradients with proper dimension handling
-                all_gradients = []
-                for l, layer in enumerate(self.network.layers):
-                    # Get inputs to this layer
-                    if l == 0:
-                        inputs_to_use = batch_inputs  # Shape: (batch_size, input_dim)
-                    else:
-                        inputs_to_use = self.network.layers[l - 1].outputs  # Shape: (batch_size, prev_layer_neurons)
-                    
-                    delta = deltas[l]  # Shape: (batch_size, current_layer_neurons)
-                    
-                    # FIX 5: Ensure inputs have bias term for gradient calculation
-                    # Add bias unit to inputs: (batch_size, input_dim + 1)
-                    inputs_with_bias = np.column_stack([inputs_to_use, np.ones(inputs_to_use.shape[0])])
-                    
-                    # FIX 6: Proper gradient calculation
-                    # ∇W = (a_{l-1}^T · δ_l) / batch_size
-                    if delta.ndim == 1:
-                        delta = delta.reshape(-1, 1)  # Ensure 2D
-                    
-                    # print(f'Inputs with bias shape = {inputs_with_bias.shape}')
-                    # print(f'delta shape = {delta.shape}')
-                    # print(f'Batch size = {batch_inputs.shape[0]}')
-                    # Gradient for all weights (including bias)
-                    gradients = np.dot(inputs_with_bias.T, delta) / batch_inputs.shape[0]
-
-                    # print(f'Gradients shape = {gradients.shape}')
-                    
-                    # Split gradients for each perceptron
-                    layer_gradients = [gradients[:, i] for i in range(gradients.shape[1])]
-                    all_gradients.append(layer_gradients)
-                self.optimizer.update_network(self.network, all_gradients, self.learning_rate)
+                self.optimizer.update_network(self.network, self.learning_rate)
                     
 
             avg_train_loss = total_loss/ (num_samples // batch_size)
