@@ -46,6 +46,7 @@ class AdamOptimizer(OptimizerFunction):
                     m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
                     v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
                     l.weights = l.weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+                    l.grad = 0.0
                 continue
             else:
                 key = id(layer)
@@ -61,7 +62,7 @@ class AdamOptimizer(OptimizerFunction):
                 m_hat = self.m[key] / (1 - self.beta1 ** self.timestep[key])
                 v_hat = self.v[key] / (1 - self.beta2 ** self.timestep[key])
                 layer.weights = layer.weights - learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
-
+                layer.grad = 0.0
     
     
     def reset_state(self) -> None:

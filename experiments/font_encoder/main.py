@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 # Add root directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from neural_network.utils.data_utils import parse_font_file
+from neural_network.utils.data_utils import parse_font_file, plot_latent_space
 from neural_network.core.auto_encoder import AutoEncoder
 from neural_network.core.trainer import Trainer
 from neural_network.core.losses.functions import mse
@@ -22,30 +22,6 @@ def visualize_character(data, title="Character", ax=None):
     ax.set_title(title)
     ax.axis('off')
     return ax
-
-
-def plot_latent_space(ae, X, char_labels, save_path=None):
-    """Visualiza el espacio latente 2D con las etiquetas de caracteres."""
-    latent = ae.encode(X, training=False)
-
-    plt.figure(figsize=(12, 10))
-    plt.scatter(latent[:, 0], latent[:, 1], s=100, alpha=0.6, c=range(len(char_labels)), cmap='tab20')
-
-    # Añadir etiquetas a cada punto
-    for i, label in enumerate(char_labels):
-        plt.annotate(label, (latent[i, 0], latent[i, 1]),
-                    fontsize=12, ha='center', va='bottom',
-                    bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.3))
-
-    plt.xlabel('Dimensión Latente 1', fontsize=12)
-    plt.ylabel('Dimensión Latente 2', fontsize=12)
-    plt.title('Espacio Latente 2D del Autoencoder', fontsize=14, fontweight='bold')
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-
-    if save_path:
-        plt.savefig(save_path, dpi=150)
-    plt.show()
 
 
 def plot_reconstructions(X, X_reconstructed, char_labels, num_samples=8, save_path=None):
@@ -136,7 +112,8 @@ def main():
     plt.show()
 
     # Espacio latente 2D
-    plot_latent_space(ae, X, char_labels,
+    latent = ae.encode(X, training=False)
+    plot_latent_space(latent, char_labels,
                      save_path="./outputs/plots/font_autoencoder_latent_space.png")
     # Comparación de reconstrucciones (todos los caracteres)
     plot_reconstructions(X, x_reconstructed, char_labels, num_samples=len(X),

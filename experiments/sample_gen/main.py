@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 # Add root directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from neural_network.utils.data_utils import parse_font_file
+from neural_network.utils.data_utils import parse_font_file, plot_latent_space
 from neural_network.core.network import NeuralNetwork
 from neural_network.core.vae import VAE
 from neural_network.core.trainer import Trainer
@@ -18,19 +18,20 @@ def main():
     #Cargar  parsear dataset
     dst = parse_font_file(DATASET_PATH)
     X = np.zeros((len(dst), len(dst[list(dst.keys())[0]])))
+    chars = list(dst.keys())
     for i, key in enumerate(dst):
         X[i] = dst[key]
     #Inicializar modelo AE
-    topology = [35, 26, 16, 8, 2]
-    enc_act = ['relu']*len(topology[2:])
-    dec_act = ['relu'] *len(topology[2:]) + ['sigmoid']
+    topology = [35, 24, 12, 2]
+    enc_act = ['tanh', 'tanh']
+    dec_act = ['tanh', 'tanh', 'sigmoid']
     vae = VAE(topology, enc_act, dec_act)
     #Parametros de entrenamiento
     b_size = 32 #Conjunto completo como batch
     lr = 1e-2
     epochs = 10000
     opt_cfg = OptimizerConfig("ADAM")
-    tr = Trainer(lr, epochs, vae, mse, opt_cfg)
+    tr = Trainer(lr, epochs, vae, mse, opt_cfg, kl_reg=1e-3)
     #Entrenar modelo
     tr_losses, _ = tr.train(X, X, b_size)
     #Verificar diferencias entre codificado-decodificado y forward
@@ -38,7 +39,17 @@ def main():
     encoded2 = vae.forward(X, training=False)
     print(f'difference between encoded-decoded and forward: {np.sum(np.abs(encoded - encoded2))}')
     #params
-    print(vae.get_params(X[0]))
+    mu_arr, sigma_arr = vae.get_params(X)
+    vae.save_weights("./outputs/weights/font_vae_weights.npz")
+    #Cargar pesos para verificar
+    vae2 = VAE(topology, enc_act, dec_act)
+    vae2.load_weights("./outputs/weights/font_vae_weights.npz")
+    mu_arr2, sigma_arr2 = vae2.get_params(X)
+    print(f'Difference between original and loaded weights mu: {np.sum(np.abs(mu_arr - mu_arr2))}, sigma: {np.sum(np.abs(sigma_arr - sigma_arr2))}')
+
+
+    #Plot latent space
+    plot_latent_space(mu_arr, chars, save_path="./outputs/plots/font_vae_latent_space.png")
     #Graficar perdida
     plt.figure()
     plt.plot(tr_losses, label="VAE", lw=3)

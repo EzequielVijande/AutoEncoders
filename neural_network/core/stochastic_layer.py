@@ -21,7 +21,7 @@ class StochasticLayer(Layer):
         self.scale = self.sigma_layer.forward(inputs)#np.dot(inputs_with_bias, self.sigma_layer.weights)    # Shape: (batch_size, num_perceptrons)
         samples = np.random.normal(loc=0.0, scale=1.0, size=self.scale.shape)
         self.last_sample = samples
-        outputs = samples * self.scale + self.location #Sample using reparametrization trick
+        outputs = samples * np.exp(self.scale/2) + self.location #Sample using reparametrization trick
 
         #Apply dropout if set
         if training and self.dropout_rate > 0.0:
@@ -35,7 +35,7 @@ class StochasticLayer(Layer):
     def backward(self, output_gradients: np.ndarray) -> np.ndarray:
         # Gradients w.r.t. location and scale
         grad_location = output_gradients  # Shape: (batch_size, num_perceptrons)
-        grad_scale = output_gradients * self.last_sample  # Shape: (batch_size, num_perceptrons)
+        grad_scale = output_gradients * self.last_sample *0.5*np.exp(self.scale/2)  # Shape: (batch_size, num_perceptrons)
 
         # Backprop through mean and sigma layers
         grad_inputs_mean = self.mean_layer.backward(grad_location)  # Shape: (batch_size, num_inputs + 1)

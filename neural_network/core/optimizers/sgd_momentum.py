@@ -32,6 +32,7 @@ class SGDMomentumOptimizer(OptimizerFunction):
                         self.velocity_dict[key] = np.zeros_like(l.weights, dtype=np.float32)
                     self.velocity_dict[key] = self.momentum * self.velocity_dict[key] + l.grad
                     l.weights = l.weights - learning_rate * self.velocity_dict[key]
+                    l.grad = 0.0
                 continue
             else:
                 key = id(layer)
@@ -39,6 +40,7 @@ class SGDMomentumOptimizer(OptimizerFunction):
                     self.velocity_dict[key] = np.zeros_like(layer.weights, dtype=np.float32)
                 self.velocity_dict[key] = self.momentum * self.velocity_dict[key] + layer.grad
                 layer.weights = layer.weights - learning_rate * self.velocity_dict[key]
+                layer.grad = 0.0
     
     def reset_state(self) -> None:
         self.velocity = None

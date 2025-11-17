@@ -16,6 +16,7 @@ class Layer:
         self.mask: np.ndarray = np.array([])
         self.last_z: np.ndarray = np.array([])
         self.last_inputs: np.ndarray = np.array([])
+        self.grad = 0.0
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
         # Add bias term to inputs
@@ -48,7 +49,7 @@ class Layer:
         input_gradients = np.dot(delta, self.weights[:-1, :].T)  # Shape: (batch_size, num_inputs)
 
         # Update weights - this will be handled by the optimizer in practice
-        self.grad = weight_gradients
+        self.grad += weight_gradients
 
         return input_gradients
 

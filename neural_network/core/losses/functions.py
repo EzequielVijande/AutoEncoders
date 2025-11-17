@@ -24,3 +24,8 @@ def mae(x1, x2) -> Tuple[float, np.ndarray]:
 def mse(pred, label) -> Tuple[float, np.ndarray]:
     "Mean absolute err"
     return np.mean((pred-label)**2), pred-label
+
+def kl_loss(mean, var) -> Tuple[float, Tuple[np.ndarray, np.ndarray]]:
+    "KL divergence"
+    loss = - 0.5 * np.sum(1 + var - (mean**2) - np.exp(var), axis=-1)
+    return  (loss.mean(), ( mean, -0.5*(1-np.exp(var))) )

@@ -41,7 +41,11 @@ class NeuralNetwork:
     def get_topology(self) -> List[int]:
         topology = [self.layers[0].weights.shape[0]-1]  # Número de entradas (excluyendo el bias)
         for layer in self.layers:
-            topology.append(layer.weights.shape[1])  # Número de perceptrones en la capa
+            if hasattr(layer, 'layers'):
+                l =layer.layers[0]
+                topology.append(l.weights.shape[1])  # Número de perceptrones en la capa
+            else:
+                topology.append(layer.weights.shape[1])  # Número de perceptrones en la capa
         return topology
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
@@ -79,8 +83,13 @@ class NeuralNetwork:
                 'dropout_rate': self.dropout_rate
                 }
         for layer_num, layer in enumerate(self.layers):
-            layer_weights = layer.weights
-            data[f'layer_{layer_num}_weights'] = layer_weights
+            if hasattr(layer, 'layers'):
+                for j, l in enumerate(layer.layers):
+                    layer_weights = l.weights
+                    data[f'layer_{layer_num}_{j}_weights'] = layer_weights
+            else:
+                layer_weights = layer.weights
+                data[f'layer_{layer_num}_weights'] = layer_weights
         np.savez(file_path, **data)
         print(f"Pesos guardados en '{file_path}'.")
 
@@ -91,8 +100,14 @@ class NeuralNetwork:
         data = np.load(file_path, allow_pickle=True)
         num_layers = len(self.layers)
         for layer_num in range(num_layers):
-            layer_weights = data[f'layer_{layer_num}_weights']
-            self.layers[layer_num].weights = layer_weights
+            layer = self.layers[layer_num]
+            if hasattr(layer, 'layers'):
+                for j, l in enumerate(layer.layers):
+                    layer_weights = data[f'layer_{layer_num}_{j}_weights']
+                    l.weights = layer_weights
+            else:
+                layer_weights = data[f'layer_{layer_num}_weights']
+                self.layers[layer_num].weights = layer_weights
         print(f"Pesos cargados desde '{file_path}'.")
 
     @staticmethod

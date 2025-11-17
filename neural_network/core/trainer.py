@@ -2,16 +2,23 @@ import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
 from .network import NeuralNetwork
 from .optimizers import OptimizerFunction, OptimizerFunctionFactory
+from .losses.functions import kl_loss
 from ..config import OptimizerConfig
 from ..utils.data_utils import calculate_score, k_fold_split, stratified_k_fold_split
 
 class Trainer:
     def __init__(self, learning_rate, epochs, network: NeuralNetwork, loss_func,
-                optimizer_config: Optional[OptimizerConfig] = None,):
+                optimizer_config: Optional[OptimizerConfig] = None, kl_reg=0.0):
         self.learning_rate: float = learning_rate
         self.epochs: int = epochs
         self.network = network
         self.loss_f = loss_func
+        self.kl_reg = kl_reg
+        if kl_reg>0.0:
+            for l_idx, layer in enumerate(self.network.layers):
+                if layer.name == "STOCHASTIC":
+                    self.stochastic_layer = l_idx
+                    break
         if optimizer_config is None:
             optimizer_config = OptimizerConfig()
         self.optimizer: OptimizerFunction = self._create_optimizer(optimizer_config)
@@ -43,13 +50,12 @@ class Trainer:
 
                 if np.isnan(y).any() or np.isinf(y).any():
                     print("Advertencia: y contiene valores NaN o Inf en la época", epoch)
-                    continue
+                    raise OverflowError(f"Advertencia: y contiene valores NaN o Inf en la época {epoch}")
 
                 # print(f'Y shape = {y.shape}')
                 # print(f'Batch labels shape = {batch_labels.shape}')
                 batch_labels = batch_labels.reshape(y.shape)  # Ensure same shape
                 batch_loss, loss_grad = self.loss_f(y, batch_labels)
-                total_loss += batch_loss
 
                 # FIX 1: Ensure batch_loss has correct shape for backpropagation
                 # print(f'Loss grad shape ={loss_grad.shape}')
@@ -59,9 +65,30 @@ class Trainer:
                 for l in range(len(self.network.layers) - 1, -1, -1):
                     current_layer = self.network.layers[l]
                     delta = current_layer.backward(delta)
-
+                #KL regularization for VAE
+                reg_loss = 0.0
+                if self.kl_reg>0.0:
+                    reg_loss, reg_grad = kl_loss(self.network.layers[self.stochastic_layer].location,
+                                      self.network.layers[self.stochastic_layer].scale)
+                    print(f"Reg loss: {reg_loss}")
+                    if np.isinf(reg_loss):
+                        raise OverflowError("KL divergence produced Inf value.")
+                    mu_grad, sigma_grad = reg_grad
+                    #Apply regulation weight
+                    reg_loss *= self.kl_reg
+                    mu_grad *= self.kl_reg
+                    sigma_grad *= self.kl_reg
+                    #Backprop
+                    delta_mu = self.network.layers[self.stochastic_layer].mean_layer.backward(mu_grad)
+                    delta_sigma = self.network.layers[self.stochastic_layer].sigma_layer.backward(sigma_grad)
+                    delta = delta_mu + delta_sigma
+                    #Backpropagate through stochastic layer
+                    for l in range(self.stochastic_layer-1, -1, -1):    
+                        current_layer = self.network.layers[l]
+                        delta = current_layer.backward(delta)
                 self.optimizer.update_network(self.network, self.learning_rate)
-                    
+
+                total_loss += batch_loss + reg_loss
 
             avg_train_loss = total_loss/ (num_samples // batch_size)
             train_losses.append(avg_train_loss)

@@ -9,6 +9,7 @@ from .sigmoid import SigmoidActivation
 from .relu import ReLUActivation
 from .linear import LinearActivation
 from .tanh import TanhActivation
+from .exp import ExpActivation
 
 
 class ActivationFunctionType(Enum):
@@ -19,6 +20,7 @@ class ActivationFunctionType(Enum):
     RELU = auto()
     TANH = auto()
     LINEAR = auto()
+    EXP = auto()
 
 
 class ActivationFunctionFactory:
@@ -30,6 +32,7 @@ class ActivationFunctionFactory:
         ActivationFunctionType.RELU: ReLUActivation,
         ActivationFunctionType.TANH: TanhActivation,
         ActivationFunctionType.LINEAR: LinearActivation,
+        ActivationFunctionType.EXP: ExpActivation,
     }
     
     # Mapeo de string a enum
@@ -40,6 +43,7 @@ class ActivationFunctionFactory:
         "RELU": ActivationFunctionType.RELU,
         "TANH": ActivationFunctionType.TANH,
         "LINEAR": ActivationFunctionType.LINEAR,
+        "EXP": ActivationFunctionType.EXP,
     }
 
     @classmethod

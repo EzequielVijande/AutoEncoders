@@ -28,10 +28,10 @@ class SGDOptimizer(OptimizerFunction):
             if hasattr(layer, 'layers'):  # If the layer is a composite layer (like StochasticLayer)
                 for l in layer.layers:
                     l.weights = l.weights - learning_rate * l.grad
+                    l.grad = 0.0
             else:
                 layer.weights = layer.weights - learning_rate * layer.grad
-                # grad = np.array(gradients[layer_idx]).transpose()  # Shape: (input_dim + 1, num_perceptrons)
-                # network.layers[layer_idx].weights = layer.weights - learning_rate * grad
+                layer.grad = 0.0
                    
     def reset_state(self) -> None:
         pass
