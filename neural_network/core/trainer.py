@@ -70,7 +70,6 @@ class Trainer:
                 if self.kl_reg>0.0:
                     reg_loss, reg_grad = kl_loss(self.network.layers[self.stochastic_layer].location,
                                       self.network.layers[self.stochastic_layer].scale)
-                    print(f"Reg loss: {reg_loss}")
                     if np.isinf(reg_loss):
                         raise OverflowError("KL divergence produced Inf value.")
                     mu_grad, sigma_grad = reg_grad
@@ -88,7 +87,7 @@ class Trainer:
                         delta = current_layer.backward(delta)
                 self.optimizer.update_network(self.network, self.learning_rate)
 
-                total_loss += batch_loss + reg_loss
+                total_loss += batch_loss #+ reg_loss
 
             avg_train_loss = total_loss/ (num_samples // batch_size)
             train_losses.append(avg_train_loss)

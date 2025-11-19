@@ -1,7 +1,9 @@
 import sys
 from pathlib import Path
 from matplotlib import pyplot as plt
+import seaborn as sns
 import numpy as np
+from skimage.transform import downscale_local_mean, rescale
 # Add root directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from neural_network.utils.data_utils import parse_font_file, plot_latent_space
@@ -11,66 +13,157 @@ from neural_network.core.trainer import Trainer
 from neural_network.core.losses.functions import mse, mae
 from neural_network.config import OptimizerConfig
 
-DATASET_PATH = "resources/datasets/font.h"
+def load_poke_dst(lbls_path, data_path, pokemons2use=None, downsample_factor: int = 1):
+    #Load labels
+    poke_lbls = []
+    result_ds = []
+    for line in open(POKEMON_LBLS_PATH, 'r'):
+        poke_lbls.append(line.split('.')[0])
+    #Load pokemon dataset
+    poke_ds = np.load(POKEMON_DATASET_PATH, 'r')
+    if pokemons2use is not None:
+        for name in pokemons2use:
+            if name not in poke_lbls:
+                raise ValueError(f"El Pokémon '{name}' no se encuentra en las etiquetas.")
+            else:
+                idx = poke_lbls.index(name)
+                ds_img = downscale_local_mean(poke_ds[idx], (downsample_factor, downsample_factor)).flatten()
+                ds_img[ds_img<128.0] = 0.0
+                result_ds.append(ds_img.clip(max=1.0))
+    else:
+        for img in poke_ds:
+            ds_img = downscale_local_mean(img, (downsample_factor, downsample_factor)).flatten()
+            ds_img[ds_img<128.0] = 0.0
+            result_ds.append(ds_img.clip(max=1.0))
+    return np.array(result_ds)
 
+def visualize_pokemons(pokemons, pokemon_names):
+    n_pokemons = len(pokemons)
+    n_cols =9
+    n_rows = (n_pokemons + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 2))
+    for i, ax in enumerate(axes.flat):
+        if i < n_pokemons:
+            ax.imshow(pokemons[i].reshape(24, 24), cmap='gray')
+            ax.set_title(pokemon_names[i])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+def generate_pokemon(pkmn1, pkmn2, vae, n_poke=10):
+    print(pkmn1.shape)
+    print(pkmn2.shape)
+    if pkmn1[0]< pkmn2[0]:
+        pk1 = pkmn1
+        pk2 = pkmn2
+    else:
+        pk1 = pkmn2
+        pk2 = pkmn1
+    diff = pk2 - pk1
+    offset = np.linspace(0.0, 1.0, num=n_poke)
+    new_mus = np.zeros((10, pkmn1.size))
+    for i, off in enumerate(offset):
+        new_mus[i]= pk1 + off*diff
+    return vae.decode(new_mus)
+
+DATASET_PATH = "resources/datasets/font.h"
+POKEMON_DATASET_PATH = "resources/datasets/pokesprites_pixels.npy"
+POKEMON_LBLS_PATH = "resources/datasets/poke_lbls.txt"
 
 def main():
-    #Cargar  parsear dataset
-    dst = parse_font_file(DATASET_PATH)
-    X = np.zeros((len(dst), len(dst[list(dst.keys())[0]])))
-    chars = list(dst.keys())
-    for i, key in enumerate(dst):
-        X[i] = dst[key]
-    #Inicializar modelo AE
-    topology = [35, 24, 12, 2]
-    enc_act = ['tanh', 'tanh']
-    dec_act = ['tanh', 'tanh', 'sigmoid']
-    vae = VAE(topology, enc_act, dec_act)
-    #Parametros de entrenamiento
-    b_size = 32 #Conjunto completo como batch
-    lr = 1e-2
-    epochs = 10000
-    opt_cfg = OptimizerConfig("ADAM")
-    tr = Trainer(lr, epochs, vae, mse, opt_cfg, kl_reg=1e-3)
-    #Entrenar modelo
-    tr_losses, _ = tr.train(X, X, b_size)
-    #Verificar diferencias entre codificado-decodificado y forward
-    encoded = vae.decode(vae.encode(X, training=False), training=False)
-    encoded2 = vae.forward(X, training=False)
-    print(f'difference between encoded-decoded and forward: {np.sum(np.abs(encoded - encoded2))}')
-    #params
-    mu_arr, sigma_arr = vae.get_params(X)
-    vae.save_weights("./outputs/weights/font_vae_weights.npz")
-    #Cargar pesos para verificar
-    vae2 = VAE(topology, enc_act, dec_act)
-    vae2.load_weights("./outputs/weights/font_vae_weights.npz")
-    mu_arr2, sigma_arr2 = vae2.get_params(X)
-    print(f'Difference between original and loaded weights mu: {np.sum(np.abs(mu_arr - mu_arr2))}, sigma: {np.sum(np.abs(sigma_arr - sigma_arr2))}')
+    # #Cargar dataset de pokemones
+    pokemons2use = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'jigglypuff',
+                    'meowth', 'psyduck', 'snorlax', 'magikarp', 'eevee', 'beedrill',
+                    'mewtwo', 'dragonite', 'gengar', 'lapras', 'vaporeon',
+                    'flareon', 'jolteon', 'alakazam', 'machamp', 'golem', 'onix',
+                    'scyther', 'magmar', 'electabuzz', 'pinsir', 'aerodactyl']
+    downsample_factor = 2
+    X = load_poke_dst(POKEMON_LBLS_PATH, POKEMON_DATASET_PATH, pokemons2use, downsample_factor)
+    #visualize_pokemons(X, pokemons2use)
 
+    #Inicializar modelo AE
+    topology = [576, 64, 2]
+    enc_act = ['tanh']
+    dec_act = ['tanh', 'sigmoid']
+    vae = VAE(topology, enc_act, dec_act)
+    # #Parametros de entrenamiento
+    # b_size = len(X) #Conjunto completo como batch
+    # lr = 1e-3
+    # kl_reg = 2e0
+    # epochs = 30000
+    # opt_cfg = OptimizerConfig("ADAM")
+    # print(f"VAE Topology: {topology}")
+    # print(f'Batch size = {b_size}')
+    # print(f'LR = {lr}')
+    # print('KL regularization weight = ', kl_reg)
+    # tr = Trainer(lr, epochs, vae, mse, opt_cfg, kl_reg=kl_reg)
+    # #Entrenar modelo
+    # tr_losses, _ = tr.train(X, X, b_size)
+    # #params
+    # mu_arr, sigma_arr = vae.get_params(X)
+    # print(mu_arr.shape, sigma_arr.shape)
+    # # Plot mu parameters distribution
+    # plt.figure()
+    # sns.kdeplot(x=mu_arr[:,0].flatten(), label="Mu 1")
+    # sns.kdeplot(x=mu_arr[:,1].flatten(), label="Mu 2")
+    # plt.legend()
+    # plt.title("Distribución de parámetros mu")
+    # plt.savefig("./outputs/plots/poke_vae_mu_distribution.png")
+    # plt.show()
+    # #Plot sigma parameters distribution
+    # plt.figure()
+    # sns.kdeplot(x=np.exp(sigma_arr[:,0].flatten()/2.0), label="Sigma 1")
+    # sns.kdeplot(x=np.exp(sigma_arr[:,1].flatten()/2.0), label="Sigma 2")
+    # plt.legend()
+    # plt.title("Distribución de parámetros sigma")
+    # plt.savefig("./outputs/plots/poke_vae_sigma_distribution.png")
+    # plt.show()
+    # vae.save_weights("./outputs/weights/poke_vae_weights.npz")
+
+    # #Graficar perdida
+    # plt.figure()
+    # plt.plot(tr_losses, label="VAE", lw=3)
+    # plt.legend()
+    # plt.xlabel("Épocas")
+    # plt.ylabel("Pérdida")
+    # plt.grid(True)
+    # plt.title("Pérdida durante el Entrenamiento del Autoencoder")
+    # plt.savefig("./outputs/plots/poke_training_loss.png")
+    # plt.show()
+
+    # #Load weights
+    vae.load_weights("./outputs/weights/poke_vae_weights.npz")
+    mu_arr, sigma_arr = vae.get_params(X)
 
     #Plot latent space
-    plot_latent_space(mu_arr, chars, save_path="./outputs/plots/font_vae_latent_space.png")
-    #Graficar perdida
-    plt.figure()
-    plt.plot(tr_losses, label="VAE", lw=3)
-    plt.legend()
-    plt.xlabel("Épocas")
-    plt.ylabel("Pérdida")
-    plt.grid(True)
-    plt.title("Pérdida durante el Entrenamiento del Autoencoder")
-    plt.savefig("./outputs/plots/vae_training_loss.png")
-    plt.show()
+    plot_latent_space(mu_arr, pokemons2use, save_path="./outputs/plots/poke_vae_latent_space.png")
 
     #Graficar todas las reconstrucciones
-    preds = np.round(tr.network.forward(X, training=False)).astype(np.int32)
+    preds = np.round(vae.decode(mu_arr, training=False)).astype(np.int32)
     pixel_errors = np.abs(X - preds).sum(axis=1)
     plt.figure(figsize=(10, 6))
-    plt.bar(list(dst.keys()),pixel_errors)
+    plt.bar(pokemons2use, pixel_errors)
+    plt.xticks(rotation=45)
     plt.ylabel("Pixels incorrectos")
     plt.grid(True)
-    plt.savefig("./outputs/plots/font_autoencoder_pixel_errors.png")
+    plt.savefig("./outputs/plots/poke_vae_pixel_errors.png")
     plt.show()
 
+
+    # #Generate pokemons along a direction
+    pk1 = pokemons2use.index('psyduck')
+    pk2 = pokemons2use.index('snorlax')
+    new_gen = generate_pokemon(mu_arr[pk1], mu_arr[pk2], vae)
+    names = [f'p{i}' for i in range(10)]
+    #Clip values
+    new_gen = np.round(new_gen, 0)
+    for gen in new_gen:
+        img = gen.reshape((24,24))
+        upsampld = rescale(img, 2, order=3)
+        plt.figure()
+        plt.imshow(upsampld,cmap='gray')
+        plt.show()
+    visualize_pokemons(new_gen, names)
 
 
 
