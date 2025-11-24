@@ -25,6 +25,14 @@ def mse(pred, label) -> Tuple[float, np.ndarray]:
     "Mean absolute err"
     return np.mean((pred-label)**2), pred-label
 
+def bce(y: np.ndarray, t: np.ndarray, eps: float = 1e-12) -> Tuple[float, np.ndarray]:
+    """ Binary cross-entropy """
+    y_clipped = np.clip(y, eps, 1.0 - eps)
+    loss = -np.mean(t * np.log(y_clipped) + (1 - t) * np.log(1 - y_clipped))
+    grad = (y_clipped - t) / (y_clipped * (1.0 - y_clipped))
+    return loss, grad
+
+
 def kl_loss(mean, var) -> Tuple[float, Tuple[np.ndarray, np.ndarray]]:
     "KL divergence"
     loss = - 0.5 * np.sum(1 + var - (mean**2) - np.exp(var), axis=-1)
