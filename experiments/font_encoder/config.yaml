@@ -1,0 +1,43 @@
+# - name: unique name for the experiment
+# - topology: list defining AE layer sizes (input,...,latent)
+# - enc_act: list of encoder activations (length = len(topology)-1)
+# - dec_act: list of decoder activations (length = len(topology)-1)
+# - lr: learning rate
+# - epochs: number of training epochs
+# - b_size: batch size
+# - optimizer: optimizer name (ADAM/SGD/etc.)
+# - output_dir: where to save plots and logs
+
+experiments:
+  - name: font_ae_simple
+    topology: [35, 20,  2]
+    enc_act: ["tanh", "linear"]
+    dec_act: ["tanh", "sigmoid"]
+    lr: 0.001
+    epochs: 8000
+    b_size: 32
+    optimizer: ADAM
+    output_dir: outputs/font_experiments/simple
+    show_plots: False
+
+  - name: font_ae_smooth
+    topology: [35, 24, 12, 2]
+    enc_act: ["tanh", "tanh", "linear"]
+    dec_act: ["tanh", "tanh", "sigmoid"]
+    lr: 0.001
+    epochs: 8000
+    b_size: 32
+    optimizer: ADAM
+    output_dir: outputs/font_experiments/smooth
+    show_plots: False
+
+  - name: font_ae_smooth_deep
+    topology: [35, 24, 12, 6, 2]
+    enc_act: ["tanh", "tanh", "tanh", "linear"]
+    dec_act: ["tanh", "tanh", "tanh", "sigmoid"]
+    lr: 0.001
+    epochs: 8000
+    b_size: 32
+    optimizer: ADAM
+    output_dir: outputs/font_experiments/larger
+    show_plots: False
