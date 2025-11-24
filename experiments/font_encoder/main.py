@@ -83,6 +83,26 @@ def save_results_json(output_dir, name, results):
     return out_path
 
 
+def generate_interpolated_char(char1_key, char2_key, ae, dst, num_steps=5, show_plots=True, save_path=None):
+    """Genera caracteres interpolando entre dos caracteres en el espacio latente."""
+    char1_data = dst[char1_key]
+    char2_data = dst[char2_key]
+    latent1 = ae.encode(np.array([char1_data]), training=False)[0]
+    latent2 = ae.encode(np.array([char2_data]), training=False)[0]
+    interpolated_latents = np.array([latent1 + (latent2 - latent1) * t for t in np.linspace(0, 1, num_steps)])
+    interpolated_images = ae.decode(interpolated_latents, training=False)
+
+    fig, axes = plt.subplots(1, num_steps + 2, figsize=(2 * (num_steps + 2), 3))
+    visualize_character(char1_data, f"Original: {char1_key}", ax=axes[0])
+    for i, img_data in enumerate(interpolated_images):
+        reconstructed_binary = np.round(img_data)
+        visualize_character(reconstructed_binary, f"Interp. {i+1}", ax=axes[i+1])
+    visualize_character(char2_data, f"Original: {char2_key}", ax=axes[num_steps + 1])
+    plt.tight_layout()
+    if save_path:   plt.savefig(save_path, dpi=150)
+    if show_plots:  plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default=None, help='Path to yaml config for this run')
@@ -102,7 +122,7 @@ def main():
     optimizer = 'ADAM'
     output_dir = './outputs'
     show_plots = True
-    loss = 'mse'
+    loss = 'bce'
 
     if cfg is not None:
         name = cfg.get('name', name)
@@ -183,6 +203,10 @@ def main():
                            num_samples=len(worst_indices),
                            show_plots=show_plots,
                            save_path=str(plots_dir / "font_autoencoder_worst_cases.png"))
+
+    # Generar caracteres interpolados
+    generate_interpolated_char('p', 'r', ae, dst, num_steps=5, show_plots=show_plots,
+                               save_path=str(plots_dir / "font_autoencoder_interpolated.png"))
 
     results = {
         'name': name,
