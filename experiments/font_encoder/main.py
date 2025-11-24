@@ -186,6 +186,7 @@ def main():
         'name': name,
         'topology': topology,
         'final_loss': float(tr_losses[-1]) if len(tr_losses) > 0 else None,
+        'loss_history': [float(loss) for loss in tr_losses],
         'pixel_errors_mean': float(pixel_errors.mean()),
         'pixel_errors_std': float(pixel_errors.std())
     }
