@@ -102,6 +102,7 @@ def main():
     optimizer = 'ADAM'
     output_dir = './outputs'
     show_plots = True
+    loss = 'mse'
 
     if cfg is not None:
         name = cfg.get('name', name)
@@ -114,6 +115,7 @@ def main():
         optimizer = cfg.get('optimizer', optimizer)
         output_dir = cfg.get('output_dir', output_dir)
         show_plots = cfg.get('show_plots', show_plots)
+        loss = cfg.get('loss', loss)
 
     plots_dir = Path(output_dir) / 'plots'
     plots_dir.mkdir(parents=True, exist_ok=True)
@@ -126,9 +128,9 @@ def main():
         X[i] = dst[key]
     #Inicializar modelo AE
     ae = AutoEncoder(topology, enc_act, dec_act)
-    #Parametros de entrenamiento
+    loss_func = getattr(loss_funcs, loss)
     opt_cfg = OptimizerConfig(optimizer)
-    tr = Trainer(lr, epochs, ae, loss_funcs.mse, opt_cfg)
+    tr = Trainer(lr, epochs, ae, loss_func, opt_cfg)
     #Entrenar modelo
     tr_losses, _ = tr.train(X, X, b_size)
     #Verificar diferencias entre codificado-decodificado y forward
