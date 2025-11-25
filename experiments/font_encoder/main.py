@@ -334,10 +334,10 @@ def main():
     #  Denoising Autoencoder (1.b)
     print("\n=== Denoising Autoencoder experiments ===")
     noise_levels = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
-    denoise_results = train_denoising_autoencoder(X, flip_levels=noise_levels, epochs=3000)
+    denoise_results = train_denoising_autoencoder(X, flip_levels=noise_levels, epochs=10000)
 
     # User noise level for visual example (eg. p=0.2)
-    p_example = 0.2
+    p_example = 0.5
     if p_example in denoise_results:
         res_p = denoise_results[p_example]
         X_noisy_p = res_p["X_noisy"]
