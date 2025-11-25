@@ -54,12 +54,13 @@ def main():
     df = pd.read_csv(OUTPUT_PATH)
     print(df.keys())
     lrs = df.LR.unique()
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(30, 14))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(30, 14))
     for i, lr in enumerate(lrs):
         lr_df = df[df.LR == lr]
         # Plot on the first subplot
-        sns.lineplot(data=lr_df, x='epoch', y='loss', hue='topology', ax=axes[i//3,i%3])
-        axes[i//3,i%3].set_title(f'LR = {lr}')
+        sns.lineplot(data=lr_df, x='epoch', y='loss', hue='topology', ax=axes[i//2,i%2], ci=None)
+        axes[i//2,i%2].set_title(f'LR = {lr}')
+        axes[i//2,i%2].set_yscale('log')
 
     # Adjust layout and display the plot
     plt.tight_layout()

@@ -16,6 +16,11 @@ def softmax_cross_entropy_with_logits(logits: np.ndarray, labels: np.ndarray) ->
     loss = -np.sum(labels * np.log(softmax_probs)) / logits.shape[0]
     return loss, softmax_probs-labels
 
+def bce_logits(logits, labels, eps=1e-12):
+    pred = 1/(1+np.exp(-logits))
+    bce = labels * np.log(pred+eps) + (1-labels) * np.log(1-pred+eps)
+    return -bce.mean(), pred-labels
+
 
 def mae(x1, x2) -> Tuple[float, np.ndarray]:
     "Mean absolute err"

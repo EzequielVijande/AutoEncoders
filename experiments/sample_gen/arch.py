@@ -10,7 +10,7 @@ from neural_network.utils.data_utils import parse_font_file, plot_latent_space
 from neural_network.core.network import NeuralNetwork
 from neural_network.core.vae import VAE
 from neural_network.core.trainer import Trainer
-from neural_network.core.losses.functions import mse, mae
+from neural_network.core.losses.functions import mse, mae, bce_logits
 from neural_network.config import OptimizerConfig
 
 def load_poke_dst(lbls_path, data_path, pokemons2use=None, downsample_factor: int = 1):
@@ -71,25 +71,25 @@ def main():
     n_hidden_layers = 4
     b_size = len(X) #Conjunto completo como batch
     lrs = np.logspace(-4, -2, num=4)
-    epochs= 5000
-    kl_reg = 7e0
+    epochs= 20000
+    kl_reg = 1e1
     opt_cfg = OptimizerConfig("ADAM")
     #topologies
-    topologies = [[X.shape[-1], 256, 128, 2],
-                  [X.shape[-1], 256, 128, 64, 2],
-                  [X.shape[-1], 256, 64, 2],
-                  [X.shape[-1], 256, 2]]
+    topologies = [[X.shape[-1], 128, 2],
+                  [X.shape[-1], 64, 2],
+                  [X.shape[-1], 32, 2],
+                  [X.shape[-1], 32, 16, 2]]
     #Results to store
     results_dict = {'topology':[], 'LR':[], 'iter':[], 'loss':[],
                     'epoch':[]}
     for idx, topology in enumerate(topologies):
         print(f'Progress = {100*(idx/len(topologies))}%')
         enc_act = ['tanh']*(len(topology)-2)
-        dec_act = ['tanh']*(len(topology)-2) + ['sigmoid']
+        dec_act = ['tanh']*(len(topology)-2) + ['linear']
         for lr in lrs:
             for i in range(5):
                 vae = VAE(topology, enc_act, dec_act)
-                tr = Trainer(lr, epochs, vae, mse, opt_cfg, kl_reg=kl_reg)
+                tr = Trainer(lr, epochs, vae, bce_logits, opt_cfg, kl_reg=kl_reg)
                 #Entrenar modelo
                 tr_losses, _ = tr.train(X, X, b_size)
                 for j, loss in enumerate(tr_losses):

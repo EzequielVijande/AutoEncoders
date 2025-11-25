@@ -11,7 +11,7 @@ from neural_network.core.network import NeuralNetwork
 from neural_network.core.auto_encoder import AutoEncoder
 from neural_network.core.vae import VAE
 from neural_network.core.trainer import Trainer
-from neural_network.core.losses.functions import mse, mae
+from neural_network.core.losses.functions import mse, mae, bce_logits
 from neural_network.config import OptimizerConfig
 
 def load_poke_dst(lbls_path, data_path, pokemons2use=None, downsample_factor: int = 1):
@@ -83,11 +83,11 @@ def main():
                     'scyther', 'magmar', 'electabuzz', 'pinsir', 'aerodactyl']
     downsample_factor = 2
     X = load_poke_dst(POKEMON_LBLS_PATH, POKEMON_DATASET_PATH, pokemons2use, downsample_factor)
-    #visualize_pokemons(X, pokemons2use)
+    # visualize_pokemons(X, pokemons2use)
 
     #Inicializar modelo
     topology = [576, 64, 2]
-    dec_act = ['tanh', 'sigmoid']
+    dec_act = ['tanh', 'linear']
 
     if MODEL_NAME == "AE":
         enc_act = ['tanh','tanh'] #AE
@@ -96,20 +96,20 @@ def main():
     elif MODEL_NAME == "VAE":
         enc_act = ['tanh'] #VAE
         model = VAE(topology, enc_act, dec_act) #VAE
-        kl_reg = 2e0
+        kl_reg = 1e1
     else:
         raise ValueError('Invalid MODEL_NAME, valid arguments are \'AE\' or  \'VAE\'')
 
     # #Parametros de entrenamiento
     # b_size = len(X) #Conjunto completo como batch
     # lr = 1e-3
-    # epochs = 30000
+    # epochs = 20000
     # opt_cfg = OptimizerConfig("ADAM")
     # print(f"{MODEL_NAME} Topology: {topology}")
     # print(f'Batch size = {b_size}')
     # print(f'LR = {lr}')
     # print('KL regularization weight = ', kl_reg)
-    # tr = Trainer(lr, epochs, model, mse, opt_cfg, kl_reg=kl_reg)
+    # tr = Trainer(lr, epochs, model, bce_logits, opt_cfg, kl_reg=kl_reg)
     # #Entrenar modelo
     # tr_losses, _ = tr.train(X, X, b_size)
     # #params
@@ -118,23 +118,6 @@ def main():
     # else:
     #     mu_arr = model.encode(X)
 
-    # # Plot mu parameters distribution
-    # plt.figure()
-    # sns.kdeplot(x=mu_arr[:,0].flatten(), label="Mu 1")
-    # sns.kdeplot(x=mu_arr[:,1].flatten(), label="Mu 2")
-    # plt.legend()
-    # plt.title("Distribución de parámetros mu")
-    # plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_mu_distribution.png")
-    # plt.show()
-    # #Plot sigma parameters distribution
-    # if MODEL_NAME == 'VAE':
-    #     plt.figure()
-    #     sns.kdeplot(x=np.exp(sigma_arr[:,0].flatten()/2.0), label="Sigma 1")
-    #     sns.kdeplot(x=np.exp(sigma_arr[:,1].flatten()/2.0), label="Sigma 2")
-    #     plt.legend()
-    #     plt.title("Distribución de parámetros sigma")
-    #     plt.savefig("./outputs/plots/poke_vae_sigma_distribution.png")
-    #     plt.show()
     # model.save_weights(f"./outputs/weights/poke_{MODEL_NAME}_weights.npz")
 
     # #Graficar perdida
@@ -143,6 +126,7 @@ def main():
     # plt.legend()
     # plt.xlabel("Épocas")
     # plt.ylabel("Pérdida")
+    # plt.yscale("log")
     # plt.grid(True)
     # plt.title("Pérdida durante el Entrenamiento del Autoencoder")
     # plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_training_loss.png")
@@ -157,11 +141,31 @@ def main():
     else:
         raise ValueError('Invalid MODEL_NAME, valid arguments are \'AE\' or  \'VAE\'')
 
+  # Plot mu parameters distribution
+    plt.figure()
+    sns.kdeplot(x=mu_arr[:,0].flatten(), label="Mu 1")
+    sns.kdeplot(x=mu_arr[:,1].flatten(), label="Mu 2")
+    plt.legend()
+    plt.title("Distribución de parámetros mu")
+    plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_mu_distribution.png")
+    plt.show()
+    #Plot sigma parameters distribution
+    if MODEL_NAME == 'VAE':
+        plt.figure()
+        sns.kdeplot(x=np.exp(sigma_arr[:,0].flatten()/2.0), label="Sigma 1")
+        sns.kdeplot(x=np.exp(sigma_arr[:,1].flatten()/2.0), label="Sigma 2")
+        plt.legend()
+        plt.title("Distribución de parámetros sigma")
+        plt.savefig("./outputs/plots/poke_vae_sigma_distribution.png")
+        plt.show()
+
     #Plot latent space
     plot_latent_space(mu_arr, pokemons2use, save_path=f"./outputs/plots/poke_{MODEL_NAME}_latent_space.png")
 
     #Graficar todas las reconstrucciones
-    preds = np.round(model.decode(mu_arr, training=False)).astype(np.int32)
+    preds = 1 / (1+np.exp(-model.decode(mu_arr, training=False)))
+    preds = np.round(preds).astype(np.int32)
+    # preds = np.round(model.decode(mu_arr, training=False)).astype(np.int32)
     pixel_errors = np.abs(X - preds).sum(axis=1)
     plt.figure(figsize=(10, 6))
     plt.bar(pokemons2use, pixel_errors)
@@ -173,19 +177,18 @@ def main():
 
 
     # #Generate pokemons along a direction
-    n_poke = 9
+    n_poke = 18
     pk1 = pokemons2use.index('lapras')
-    pk2 = pokemons2use.index('magikarp')
+    pk2 = pokemons2use.index('beedrill')
     new_gen = generate_pokemon(mu_arr[pk1], mu_arr[pk2], model, n_poke)
     names = [f'p{i}' for i in range(n_poke)]
-    #Clip values
-    new_gen = np.round(new_gen, 0)
-    for gen in new_gen:
-        img = gen.reshape((24,24))
-        upsampld = rescale(img, 2, order=3)
-        plt.figure()
-        plt.imshow(upsampld,cmap='gray')
-        plt.show()
+    new_gen = 1 / (1+np.exp(-new_gen))
+    # for gen in new_gen:
+    #     img = gen.reshape((24,24))
+    #     upsampld = rescale(img, 2, order=3)
+    #     plt.figure()
+    #     plt.imshow(upsampld,cmap='gray')
+    #     plt.show()
     visualize_pokemons(new_gen, names, f'outputs/plots/{MODEL_NAME}_gens.png')
 
 
