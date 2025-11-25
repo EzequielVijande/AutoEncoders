@@ -45,6 +45,25 @@ def plot_reconstructions(X, X_reconstructed, char_labels, num_samples=8, show_pl
         plt.savefig(save_path, dpi=150)
     if show_plots: plt.show()
 
+def plot_denoising_examples(X, X_noisy, X_recons, labels, num_samples=8, save_path=None):
+    """
+    Original / Noisy / Denoised for some characters.
+    """
+    num_samples = min(num_samples, len(X))
+    fig, axes = plt.subplots(3, num_samples, figsize=(2 * num_samples, 7))
+
+    for i in range(num_samples):
+        # File 0: original
+        visualize_character(X[i], f"Original {labels[i]}", axes[0, i])
+        # File 1: with noise
+        visualize_character(X_noisy[i], "Noisy", axes[1, i])
+        # Fila 2: reconstructed (denoised)
+        visualize_character(np.round(X_recons[i]), "Denoised", axes[2, i])
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150)
+    plt.show()
 
 def evaluate_reconstruction_quality(X, X_reconstructed, char_labels):
     X_reconstructed_binary = np.round(X_reconstructed)
@@ -60,6 +79,98 @@ def evaluate_reconstruction_quality(X, X_reconstructed, char_labels):
     print(f"Desviación estándar del error: {pixel_errors.std():.2f}")
     return pixel_errors
 
+def add_binary_noise(X, flip_prob=0.2):
+    """
+    Adds binary noise (flips 0↔1) with probability flip_prob for each pixel.
+    X: array shaped (n_samples, 35) with values 0/1.
+    """
+    X_noisy = X.copy()
+    mask = np.random.rand(*X.shape) < flip_prob
+    X_noisy[mask] = 1 - X_noisy[mask]  # 0 -> 1, 1 -> 0
+    return X_noisy
+
+def eval_unseen_noise(dae, X, p, n_trials=20):
+    """Evaluate denoising performance on many new random noise samples."""
+    errs = []
+    for _ in range(n_trials):
+        X_unseen_noise = add_binary_noise(X, flip_prob=p)
+        X_unseen_recons = dae.forward(X_unseen_noise, training=False)
+        pixel_errors_unseen = np.abs(np.round(X_unseen_recons) - X).sum(axis=1)
+        errs.append(pixel_errors_unseen.mean())
+    return float(np.mean(errs)), float(np.std(errs))
+
+def train_denoising_autoencoder(X, flip_levels=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6), epochs=5000):
+    """
+    trains a denoising autoencoder for different levels of noise.
+    Returns a dict {p: {"model": dae, "losses": [...], "pixel_errors": [...]}}.
+    """
+    results = {}
+
+    for p in flip_levels:
+        print(f"\n==== Training Denoising AE with noise level p={p} ====")
+
+        # 1) Noisy entry
+        X_noisy = add_binary_noise(X, flip_prob=p)
+
+        # 2) Same basic architecture as AE
+        topology = [35, 24, 12, 2]
+        enc_act = ['tanh', 'tanh', 'linear']
+        dec_act = ['tanh', 'tanh', 'sigmoid']
+        dae = AutoEncoder(topology, enc_act, dec_act)
+
+        # 3) Training: input = X_noisy, target = X limpio
+        lr = 1e-3
+        b_size = 32
+        opt_cfg = OptimizerConfig("ADAM")
+        tr = Trainer(lr, epochs, dae, loss_funcs.bce, opt_cfg)
+
+        losses, _ = tr.train(X_noisy, X, b_size)
+        X_recons = dae.forward(X_noisy, training=False)
+
+        # 4) Error en píxeles vs X limpio (ruido de entrenamiento)
+        pixel_errors = np.abs(np.round(X_recons) - X).sum(axis=1)
+        print(f"Avg pixel error (training noise p={p}): {np.mean(pixel_errors):.2f}")
+
+        # 5) Error en ruido NO visto (promediado sobre varios ensayos)
+        mean_unseen, std_unseen = eval_unseen_noise(dae, X, p, n_trials=20)
+        print(f"Avg pixel error on *unseen* noise (p={p}): {mean_unseen:.2f} ± {std_unseen:.2f}")
+
+        results[p] = {
+            "model": dae,
+            "losses": losses,
+            "pixel_errors": pixel_errors,  # training noise
+            "unseen_mean": mean_unseen,  # averaged unseen noise
+            "unseen_std": std_unseen,
+            "X_noisy": X_noisy,
+            "X_recons": X_recons
+        }
+
+    return results
+
+
+def plot_noise_vs_error(results, save_path=None):
+    """
+    Graphs noise level (p) vs median error in pixels using *unseen* noise.
+    """
+    ps = []
+    means = []
+    stds = []
+
+    for p, res in sorted(results.items()):
+        ps.append(p)
+        means.append(res.get("unseen_mean", 0.0))
+        stds.append(res.get("unseen_std", 0.0))
+
+    plt.figure(figsize=(8, 5))
+    plt.errorbar(ps, means, yerr=stds, fmt='-o', capsize=5, linewidth=2)
+    plt.title("Efecto del nivel de ruido en la reconstrucción (ruido no visto)")
+    plt.xlabel("Probabilidad de ruido (p)")
+    plt.ylabel("Error promedio en píxeles")
+    plt.grid(True, alpha=0.3)
+
+    if save_path:
+        plt.savefig(save_path, dpi=150)
+    plt.show()
 
 def load_config(path):
     if path is None:
@@ -219,6 +330,32 @@ def main():
     out_path = save_results_json(output_dir, name, results)
     print(f"Saved results to {out_path}")
 
+
+    #  Denoising Autoencoder (1.b)
+    print("\n=== Denoising Autoencoder experiments ===")
+    noise_levels = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+    denoise_results = train_denoising_autoencoder(X, flip_levels=noise_levels, epochs=3000)
+
+    # User noise level for visual example (eg. p=0.2)
+    p_example = 0.2
+    if p_example in denoise_results:
+        res_p = denoise_results[p_example]
+        X_noisy_p = res_p["X_noisy"]
+        X_recons_p = res_p["X_recons"]
+        plot_denoising_examples(
+            X,
+            X_noisy_p,
+            X_recons_p,
+            char_labels,
+            num_samples=len(X),
+            save_path="./outputs/plots/font_denoising_examples_p02.png"
+        )
+
+    # curve noise vs median noise
+    plot_noise_vs_error(
+        denoise_results,
+        save_path="./outputs/plots/font_denoising_noise_vs_error.png"
+    )
 
 if __name__ == "__main__":
     main()
