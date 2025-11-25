@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import numpy as np
 from skimage.transform import downscale_local_mean, rescale
+from scipy.stats import norm
 # Add root directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from neural_network.utils.data_utils import parse_font_file, plot_latent_space
@@ -72,7 +73,7 @@ def generate_pokemon(pkmn1, pkmn2, vae, n_poke=10):
 DATASET_PATH = "resources/datasets/font.h"
 POKEMON_DATASET_PATH = "resources/datasets/pokesprites_pixels.npy"
 POKEMON_LBLS_PATH = "resources/datasets/poke_lbls.txt"
-MODEL_NAME = "VAE" #Should be 'AE' or 'VAE'
+MODEL_NAME = "AE" #Should be 'AE' or 'VAE'
 
 def main():
     # #Cargar dataset de pokemones
@@ -90,7 +91,7 @@ def main():
     dec_act = ['tanh', 'linear']
 
     if MODEL_NAME == "AE":
-        enc_act = ['tanh','tanh'] #AE
+        enc_act = ['tanh','linear'] #AE
         model = AutoEncoder(topology, enc_act, dec_act) #Autoencoder
         kl_reg = 0
     elif MODEL_NAME == "VAE":
@@ -122,13 +123,14 @@ def main():
 
     # #Graficar perdida
     # plt.figure()
-    # plt.plot(tr_losses, label=MODEL_NAME, lw=3)
+    # plt.rcParams['font.size'] = 12
+    # plt.plot(tr_losses, label=MODEL_NAME, lw=4)
     # plt.legend()
-    # plt.xlabel("Épocas")
-    # plt.ylabel("Pérdida")
+    # plt.xlabel("Epoch")
+    # plt.ylabel("Loss")
     # plt.yscale("log")
     # plt.grid(True)
-    # plt.title("Pérdida durante el Entrenamiento del Autoencoder")
+    # plt.title(f"{MODEL_NAME} training", fontsize=16)
     # plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_training_loss.png")
     # plt.show()
 
@@ -143,19 +145,21 @@ def main():
 
   # Plot mu parameters distribution
     plt.figure()
-    sns.kdeplot(x=mu_arr[:,0].flatten(), label="Mu 1")
-    sns.kdeplot(x=mu_arr[:,1].flatten(), label="Mu 2")
+    plt.rcParams['font.size'] = 10
+    sns.kdeplot(x=mu_arr[:,0].flatten(), label="Mu 1", lw=4)
+    sns.kdeplot(x=mu_arr[:,1].flatten(), label="Mu 2", lw=4)
     plt.legend()
-    plt.title("Distribución de parámetros mu")
+    plt.title("Distribución de parámetros mu", fontsize=16)
     plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_mu_distribution.png")
     plt.show()
     #Plot sigma parameters distribution
     if MODEL_NAME == 'VAE':
         plt.figure()
-        sns.kdeplot(x=np.exp(sigma_arr[:,0].flatten()/2.0), label="Sigma 1")
-        sns.kdeplot(x=np.exp(sigma_arr[:,1].flatten()/2.0), label="Sigma 2")
+        plt.rcParams['font.size'] = 10
+        sns.kdeplot(x=np.exp(sigma_arr[:,0].flatten()/2.0), label="Sigma 1", lw=4)
+        sns.kdeplot(x=np.exp(sigma_arr[:,1].flatten()/2.0), label="Sigma 2", lw=4)
         plt.legend()
-        plt.title("Distribución de parámetros sigma")
+        plt.title("Distribución de parámetros sigma", fontsize=16)
         plt.savefig("./outputs/plots/poke_vae_sigma_distribution.png")
         plt.show()
 
@@ -168,9 +172,10 @@ def main():
     # preds = np.round(model.decode(mu_arr, training=False)).astype(np.int32)
     pixel_errors = np.abs(X - preds).sum(axis=1)
     plt.figure(figsize=(10, 6))
+    plt.rcParams['font.size'] = 10
     plt.bar(pokemons2use, pixel_errors)
     plt.xticks(rotation=45)
-    plt.ylabel("Pixels incorrectos")
+    plt.ylabel("Pixels incorrectos", fontsize=16)
     plt.grid(True)
     plt.savefig(f"./outputs/plots/poke_{MODEL_NAME}_pixel_errors.png")
     plt.show()
@@ -178,8 +183,8 @@ def main():
 
     # #Generate pokemons along a direction
     n_poke = 18
-    pk1 = pokemons2use.index('lapras')
-    pk2 = pokemons2use.index('beedrill')
+    pk1 = pokemons2use.index('electabuzz')
+    pk2 = pokemons2use.index('magikarp')
     new_gen = generate_pokemon(mu_arr[pk1], mu_arr[pk2], model, n_poke)
     names = [f'p{i}' for i in range(n_poke)]
     new_gen = 1 / (1+np.exp(-new_gen))
@@ -190,6 +195,30 @@ def main():
     #     plt.imshow(upsampld,cmap='gray')
     #     plt.show()
     visualize_pokemons(new_gen, names, f'outputs/plots/{MODEL_NAME}_gens.png')
+
+    #Generate grid of pokemons
+     # #Generate pokemons along a direction
+    n = 10  # figure with 15x15 digits
+    digit_size = 24
+    figure = np.zeros((digit_size * n, digit_size * n))
+    # linearly spaced coordinates on the unit square were transformed through the inverse CDF (ppf) of the Gaussian
+    # to produce values of the latent variables z, since the prior of the latent space is Gaussian
+    grid_x = np.linspace(mu_arr[:,0].min(), mu_arr[:,0].max(), n)
+    grid_y = np.linspace(mu_arr[:,1].min(), mu_arr[:,1].max(), n)
+
+    for i, yi in enumerate(grid_x):
+        for j, xi in enumerate(grid_y):
+            z_sample = np.array([[xi, yi]])
+            x_decoded = 1 / (1+np.exp(-model.decode(z_sample, training=False)))
+            digit = x_decoded.reshape(digit_size, digit_size)
+            figure[i * digit_size: (i + 1) * digit_size,
+                j * digit_size: (j + 1) * digit_size] = digit
+
+    fig = plt.figure(figsize=(5, 5))
+    plt.imshow(figure, cmap='Greys_r')
+    plt.axis('off')
+    plt.savefig(f'outputs/plots/{MODEL_NAME}_grid.png')
+    plt.show()
 
 
 

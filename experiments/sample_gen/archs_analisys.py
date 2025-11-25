@@ -54,16 +54,17 @@ def main():
     df = pd.read_csv(OUTPUT_PATH)
     print(df.keys())
     lrs = df.LR.unique()
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(30, 14))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(30, 18), constrained_layout=True)
+    # plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.2, hspace=0.3)
     for i, lr in enumerate(lrs):
         lr_df = df[df.LR == lr]
         # Plot on the first subplot
-        sns.lineplot(data=lr_df, x='epoch', y='loss', hue='topology', ax=axes[i//2,i%2], ci=None)
-        axes[i//2,i%2].set_title(f'LR = {lr}')
+        plt.rcParams['font.size'] = 20
+        sns.lineplot(data=lr_df, x='epoch', y='loss', hue='topology', ax=axes[i//2,i%2], ci=None, lw=3)
+        axes[i//2,i%2].set_title(f'LR = {np.round(lr, 4)}', fontsize=24)
         axes[i//2,i%2].set_yscale('log')
 
     # Adjust layout and display the plot
-    plt.tight_layout()
     plt.savefig("./outputs/plots/vae_archs_loss.png")
     plt.show()
 

@@ -58,51 +58,59 @@ OUTPUT_PATH = './outputs/lr_searcher.csv'
 LATENT_DIM = 2
 
 def main():
-    #Cargar dataset de pokemones
-    pokemons2use = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'jigglypuff',
-                    'meowth', 'psyduck', 'snorlax', 'magikarp', 'eevee', 'beedrill',
-                    'mewtwo', 'dragonite', 'gengar', 'lapras', 'vaporeon',
-                    'flareon', 'jolteon', 'alakazam', 'machamp', 'golem', 'onix',
-                    'scyther', 'magmar', 'electabuzz', 'pinsir', 'aerodactyl']
-    downsample_factor = 2
-    X = load_poke_dst(POKEMON_LBLS_PATH, POKEMON_DATASET_PATH, pokemons2use, downsample_factor)
-    #visualize_pokemons(X, pokemons2use)
+    # #Cargar dataset de pokemones
+    # pokemons2use = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'jigglypuff',
+    #                 'meowth', 'psyduck', 'snorlax', 'magikarp', 'eevee', 'beedrill',
+    #                 'mewtwo', 'dragonite', 'gengar', 'lapras', 'vaporeon',
+    #                 'flareon', 'jolteon', 'alakazam', 'machamp', 'golem', 'onix',
+    #                 'scyther', 'magmar', 'electabuzz', 'pinsir', 'aerodactyl']
+    # downsample_factor = 2
+    # X = load_poke_dst(POKEMON_LBLS_PATH, POKEMON_DATASET_PATH, pokemons2use, downsample_factor)
+    # #visualize_pokemons(X, pokemons2use)
 
-    #Parametros fijos x arquitectura
-    b_size = len(X) #Conjunto completo como batch
-    lrs = np.linspace(2e-4, 2e-3, num=10)
-    epochs= 20000
-    kl_reg = 1e1
-    opt_cfg = OptimizerConfig("ADAM")
-    #Results to store
-    results_dict = {'LR':[], 'iter':[], 'loss':[],
-                    'epoch':[]}
-    topology = [576, 64, 2]
-    enc_act = ['tanh']
-    dec_act = ['tanh'] + ['linear']
-    for lr in lrs:
-        for i in range(5):
-            vae = VAE(topology, enc_act, dec_act)
-            tr = Trainer(lr, epochs, vae, mse, opt_cfg, kl_reg=kl_reg)
-            #Entrenar modelo
-            tr_losses, _ = tr.train(X, X, b_size)
-            for j, loss in enumerate(tr_losses):
-                results_dict['LR'].append(lr)
-                results_dict['iter'].append(i)
-                results_dict['loss'].append(loss)
-                results_dict['epoch'].append(j)
-            del vae
-    df = pd.DataFrame(results_dict)
-    df.to_csv(OUTPUT_PATH)
+    # #Parametros fijos x arquitectura
+    # b_size = len(X) #Conjunto completo como batch
+    # lrs = np.linspace(2e-4, 2e-3, num=10)
+    # epochs= 20000
+    # kl_reg = 1e1
+    # opt_cfg = OptimizerConfig("ADAM")
+    # #Results to store
+    # results_dict = {'LR':[], 'iter':[], 'loss':[],
+    #                 'epoch':[]}
+    # topology = [576, 64, 2]
+    # enc_act = ['tanh']
+    # dec_act = ['tanh'] + ['linear']
+    # for lr in lrs:
+    #     for i in range(5):
+    #         vae = VAE(topology, enc_act, dec_act)
+    #         tr = Trainer(lr, epochs, vae, bce_logits, opt_cfg, kl_reg=kl_reg)
+    #         #Entrenar modelo
+    #         tr_losses, _ = tr.train(X, X, b_size)
+    #         for j, loss in enumerate(tr_losses):
+    #             results_dict['LR'].append(lr)
+    #             results_dict['iter'].append(i)
+    #             results_dict['loss'].append(loss)
+    #             results_dict['epoch'].append(j)
+    #         del vae
+    # df = pd.DataFrame(results_dict)
+    # df.to_csv(OUTPUT_PATH)
 
     #load and plot results
     df = pd.read_csv(OUTPUT_PATH)
+    df['LR']= df['LR'].round(4)
     df = df.astype({'LR': str})
 
-    plt.figure()
-    sns.lineplot(df, x='epoch', y='loss', hue='LR', ci=None)
-    plt.ylim(top=0.15, bottom=0)
-    plt.xscale('log')
+    print(plt.rcParams.keys())
+    plt.figure(figsize=(12,8))
+    sns.lineplot(df, x='epoch', y='loss', hue='LR', ci=None, lw=4)
+    plt.title('VAE Training curves')
+    plt.yscale('log')
+    plt.rcParams['font.size'] = 22
+    plt.rcParams["axes.titlesize"] = 26
+    plt.rcParams["axes.labelsize"] = 16
+    plt.rcParams["xtick.labelsize"] = 14
+    plt.rcParams["ytick.labelsize"] = 14
+    plt.rcParams["legend.fontsize"] = 18
     plt.savefig("./outputs/plots/vae_lrs.png")
     plt.show()
 
